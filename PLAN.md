@@ -1,0 +1,68 @@
+# PurpleBox Mobile — Build Plan
+
+A separate React Native project that reuses the existing PurpleBox web API
+(`api.purplebox.ae`) — no new backend, same login, same data. Built one
+feature at a time, in the order requested.
+
+## Stack
+
+- **Expo (managed workflow)** + **Expo Router** (file-based routing, SDK 57)
+- **NativeWind v4** (Tailwind for React Native) on **Tailwind CSS v3.4**
+- **React Query** for server state/caching
+- **expo-secure-store** for the auth token (Keychain/Keystore-backed — the
+  mobile equivalent of the web app's `localStorage` token)
+- **axios** client pointed at `https://api.purplebox.ae/api` — the exact
+  same base URL and endpoints the web app calls
+- Fonts/colors mirror the web app's design system (Bricolage Grotesque for
+  display type, Plus Jakarta Sans for body text, brand purple `#5B2BC9`)
+
+## Auth
+
+Same credentials as the web app. `app/login.tsx` posts directly to
+`/api/auth/login` — the identical endpoint `office.purplebox.ae` uses — and
+stores the returned token + user with `expo-secure-store`. Any user who can
+sign into the office app can sign into the mobile app with no separate
+registration step.
+
+## Feature build order
+
+| # | Feature | Status | Reuses |
+|---|---------|--------|--------|
+| 1 | Login & session | ✅ Done | `POST /api/auth/login`, `expo-secure-store` |
+| 2 | WhatsApp | ⏳ Next | `GET/POST /api/whatsapp/*` |
+| 3 | Leads (incl. AI scoring) | ⏳ Pending | `GET /api/leads`, `GET /api/leads/:id/score`, `GET /api/leads/high-intent` |
+| 4 | Search Unit | ⏳ Pending | `GET /api/quotes/available-units` |
+| 5 | AI Chat Bot | ⏳ Pending | `POST /api/assistant` |
+
+Nothing is skipped — each stub tab already names its real endpoint and this
+plan file, so the scope is locked in even before it's built.
+
+## What's built so far (Feature 1)
+
+- `app/_layout.tsx` — font loading, React Query provider, auth-aware route
+  guard (signed out → `/login`, signed in → the tab shell)
+- `app/login.tsx` — email/password form matching the web app's visual style
+- `src/lib/api.ts` — axios client, bearer token interceptor, 401 auto-logout
+- `src/lib/auth.tsx` — `AuthProvider` / `useAuth()`, session persisted in
+  SecureStore across app restarts
+- `src/lib/theme.ts` — color/font constants shared across screens
+- `app/(tabs)/_layout.tsx` — 5-tab shell: WhatsApp, Leads, Search Unit,
+  Assistant, Profile
+- `app/(tabs)/profile.tsx` — real screen: shows the signed-in user, sign out
+- `app/(tabs)/whatsapp.tsx`, `leads.tsx`, `units.tsx`, `assistant.tsx` —
+  placeholder screens naming the endpoint each will call
+
+Verified: `npx tsc --noEmit` clean, `npx expo export --platform ios`
+bundles successfully (1742 modules).
+
+## Design system
+
+Matches the web app, adapted to native/Apple UI conventions:
+
+- **Colors**: brand purple `#5B2BC9` (dark `#4A1FA0`, tint `#EDE5FF`), ink
+  `#14081F`, muted `#756E80`, paper background `#FBF8F2`
+- **Type**: Bricolage Grotesque (display/headings), Plus Jakarta Sans
+  (body, medium, bold weights)
+- **Patterns**: native iOS tab bar (`expo-router` Tabs), rounded cards,
+  soft shadows, native `Alert` for destructive confirmations (sign out),
+  SF Symbols-style Ionicons throughout
