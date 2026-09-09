@@ -29,15 +29,15 @@ registration step.
 | # | Feature | Status | Reuses |
 |---|---------|--------|--------|
 | 1 | Login & session | ✅ Done | `POST /api/auth/login`, `expo-secure-store` |
-| 2 | WhatsApp | ⏳ Next | `GET/POST /api/whatsapp/*` |
-| 3 | Leads (incl. AI scoring) | ⏳ Pending | `GET /api/leads`, `GET /api/leads/:id/score`, `GET /api/leads/high-intent` |
+| 2 | WhatsApp | ✅ Done | `GET/POST /api/whatsapp/*`, `GET /api/leads/:id/score` |
+| 3 | Leads (incl. AI scoring) | ⏳ Next | `GET /api/leads`, `GET /api/leads/:id/score`, `GET /api/leads/high-intent` |
 | 4 | Search Unit | ⏳ Pending | `GET /api/quotes/available-units` |
 | 5 | AI Chat Bot | ⏳ Pending | `POST /api/assistant` |
 
 Nothing is skipped — each stub tab already names its real endpoint and this
 plan file, so the scope is locked in even before it's built.
 
-## What's built so far (Feature 1)
+## What's built so far (Feature 1 — Login & Auth)
 
 - `app/_layout.tsx` — font loading, React Query provider, auth-aware route
   guard (signed out → `/login`, signed in → the tab shell)
@@ -49,11 +49,40 @@ plan file, so the scope is locked in even before it's built.
 - `app/(tabs)/_layout.tsx` — 5-tab shell: WhatsApp, Leads, Search Unit,
   Assistant, Profile
 - `app/(tabs)/profile.tsx` — real screen: shows the signed-in user, sign out
-- `app/(tabs)/whatsapp.tsx`, `leads.tsx`, `units.tsx`, `assistant.tsx` —
-  placeholder screens naming the endpoint each will call
+- `app/(tabs)/leads.tsx`, `units.tsx`, `assistant.tsx` — placeholder screens
+  naming the endpoint each will call
+
+## What's built so far (Feature 2 — WhatsApp)
+
+- `app/(tabs)/whatsapp/index.tsx` — conversation list: owner tabs (All /
+  Mine / Waiting / Tenants / Unassigned / Quiet) with live counts, search
+  (debounced, server-side), unread dot + bold name (tracked locally — the
+  web app has no server-side "read" state either, see `src/lib/seen.ts`),
+  waiting-time chip, pull-to-refresh, polls every 10s like the web console
+- `app/(tabs)/whatsapp/[phone].tsx` — the thread: inverted message list,
+  bubbles for text/image/video/voice/document, composer with photo/video
+  attach (camera or library) and upload progress, polls every 5s
+- `src/components/whatsapp/Attachment.tsx` — renders every media kind the
+  web console handles; images/video/voice stream through the authenticated
+  `/api/whatsapp-media/:messageId` proxy and are cached to a local file
+  (`src/lib/media.ts`) so scrolling never re-downloads them
+- `src/components/whatsapp/ScoreSheet.tsx` — the AI lead-score panel as a
+  bottom sheet (native header "Score" button on any chat linked to a lead):
+  band + score, reasoning, suggested next action, signals, the "when do
+  they need it" date picker, and the qualifying/not-interested confirm
+  buttons — same three endpoints as the web app's right-hand panel
+- `src/lib/whatsapp.ts` — types and API calls ported field-for-field from
+  `client/src/lib/api.ts`'s `whatsappApi`/`leadApi`
+
+**Left out of this pass** (present on web, not yet on mobile — nothing
+silently dropped, just not built yet): editing/deleting a sent message,
+approved-template sends, quick replies, label management, assigning an
+unowned chat to a rep, and voice-note recording. These can be added later
+if needed; they weren't asked for by name and the four core actions (read,
+send text, send media, see the score) cover the day-to-day use case.
 
 Verified: `npx tsc --noEmit` clean, `npx expo export --platform ios`
-bundles successfully (1742 modules).
+bundles successfully after each feature.
 
 ## Design system
 
