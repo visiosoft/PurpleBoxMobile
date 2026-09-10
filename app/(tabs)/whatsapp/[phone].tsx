@@ -251,8 +251,8 @@ export default function ChatThreadScreen() {
       </View>
 
       {!!leadId && lead && meta && (
-        <View style={{ gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingHorizontal: 12, paddingVertical: 9 }}>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        <View style={{ width: '100%', gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingHorizontal: 12, paddingVertical: 9 }}>
+          <View style={{ width: '100%', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <PressableScale
               onPress={() => setStatusOpen(true)}
               style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
