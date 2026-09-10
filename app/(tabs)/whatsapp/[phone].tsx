@@ -13,10 +13,12 @@ import {
 } from 'expo-audio'
 import { whatsappApi, messageTemplateApi, type WhatsAppMsg, type MessageTemplate } from '../../../src/lib/whatsapp'
 import { leadApi, type LeadStatus } from '../../../src/lib/leads'
+import { userApi } from '../../../src/lib/users'
 import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
 import { notify } from '../../../src/lib/alert'
 import { markSeen } from '../../../src/lib/seen'
+import { useAuth } from '../../../src/lib/auth'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Attachment from '../../../src/components/whatsapp/Attachment'
 import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
@@ -44,6 +46,8 @@ export default function ChatThreadScreen() {
   const { phone, name, leadId } = useLocalSearchParams<{ phone: string; name?: string; leadId?: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [draft, setDraft] = useState('')
   const [pendingMedia, setPendingMedia] = useState<PendingMedia | null>(null)
   const [uploadPct, setUploadPct] = useState<number | null>(null)
@@ -55,6 +59,7 @@ export default function ChatThreadScreen() {
   const [unitSizeOpen, setUnitSizeOpen] = useState(false)
   const [contactedNoteOpen, setContactedNoteOpen] = useState(false)
   const [siteVisitOpen, setSiteVisitOpen] = useState(false)
+  const [ownerOpen, setOwnerOpen] = useState(false)
   // A pushed screen stays mounted under whatever's on top of it — switch to
   // another bottom tab, or back to the thread list, and this poll would
   // otherwise keep firing for a chat nobody is looking at.
@@ -108,6 +113,23 @@ export default function ChatThreadScreen() {
       leadApi.updateUnitSize(leadId!, body),
     onSuccess: () => { setUnitSizeOpen(false); invalidateLead() },
     onError: (e) => notify('Could not save', apiError(e)),
+  })
+
+  // Reassigning to a different rep is admin-only — the server enforces this
+  // too (a sales rep's own PUT /leads/:id always keeps them as the owner),
+  // this just avoids offering a control that would silently no-op for
+  // anyone else.
+  const { data: assignableUsers } = useQuery({
+    queryKey: ['users-assignable'],
+    queryFn: userApi.assignable,
+    enabled: isAdmin && !!leadId,
+    staleTime: 5 * 60_000,
+  })
+  const reps = (assignableUsers ?? []).filter((u) => u.role === 'sales_rep' || u.role === 'accounts')
+  const reassign = useMutation({
+    mutationFn: (ownerId: string | null) => leadApi.reassign(leadId!, ownerId),
+    onSuccess: () => { setOwnerOpen(false); invalidateLead() },
+    onError: (e) => notify('Could not reassign', apiError(e)),
   })
 
   // "Contacted" is the one status where what was actually said matters —
@@ -289,6 +311,19 @@ export default function ChatThreadScreen() {
             </Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.faint} />
           </PressableScale>
+          {isAdmin && (
+            <PressableScale
+              onPress={() => setOwnerOpen(true)}
+              style={{ height: 38, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+            >
+              <Ionicons name="person-outline" size={15} color={COLORS.ink3} />
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Owner</Text>
+              <Text numberOfLines={1} style={{ flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }}>
+                {lead.owner?.name || 'Unassigned — tap to assign'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.faint} />
+            </PressableScale>
+          )}
         </View>
       )}
 
@@ -475,6 +510,16 @@ export default function ChatThreadScreen() {
               durationUnit={lead.durationUnit}
               onSave={(v) => updateUnitSize.mutate(v)}
               onClose={() => setUnitSizeOpen(false)}
+            />
+          )}
+          {isAdmin && (
+            <PickerSheet
+              visible={ownerOpen}
+              title="Assign to"
+              options={[{ value: '', label: 'Unassigned' }, ...reps.map((u) => ({ value: u._id, label: u.name || u.email }))]}
+              selected={lead?.owner?._id ?? ''}
+              onSelect={(v) => reassign.mutate(v || null)}
+              onClose={() => setOwnerOpen(false)}
             />
           )}
         </>

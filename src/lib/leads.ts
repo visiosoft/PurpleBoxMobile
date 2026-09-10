@@ -124,6 +124,12 @@ export const leadApi = {
     api.put<Lead>(`/leads/${id}`, { followUpAt }).then((r) => r.data),
   scheduleSiteVisit: (id: string, siteVisitAt: string | null) =>
     api.put<Lead>(`/leads/${id}`, { siteVisitAt }).then((r) => r.data),
+  /** Admin only — PUT /leads/:id treats a sales rep's own owner field as
+   *  always themselves (server/src/routes/leads.js), so this only ever
+   *  actually reassigns when the caller isn't one. `ownerId: null` hands
+   *  the lead back to Unassigned. */
+  reassign: (id: string, ownerId: string | null) =>
+    api.put<Lead>(`/leads/${id}`, { owner: ownerId }).then((r) => r.data),
   /** How much storage they need, and for how long — set right from the
    *  WhatsApp chat while it's actually being discussed, instead of only
    *  from the lead's own detail screen. */

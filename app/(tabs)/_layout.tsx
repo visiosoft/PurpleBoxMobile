@@ -30,7 +30,6 @@ export default function TabsLayout() {
   const isAdmin = user?.role === 'admin'
   const { waiting } = useNotifications()
   const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: leadApi.stats, staleTime: 30_000 })
-  const unassigned = stats?.unassigned ?? 0
 
   return (
     <View style={{ flex: 1 }}>
@@ -47,14 +46,22 @@ export default function TabsLayout() {
           },
         }}
       >
+        {/* Home and Overview are mutually exclusive (never both visible),
+            so their relative order to each other doesn't matter — only
+            their shared position ahead of Leads/WhatsApp does, so whichever
+            one a role sees always leads the bar. */}
         <Tabs.Screen
           name="home"
           options={{ href: isAdmin ? null : undefined, title: 'Home', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
         />
         <Tabs.Screen
+          name="overview"
+          options={{ href: isAdmin ? undefined : null, title: 'Overview', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
+        />
+        <Tabs.Screen
           name="leads"
           options={{
-            href: isAdmin ? null : undefined, title: 'Leads',
+            title: 'Leads',
             tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-outline" badge={stats?.byStatus?.new ?? 0} />,
           }}
         />
@@ -67,23 +74,8 @@ export default function TabsLayout() {
             },
           }}
           options={{
-            href: isAdmin ? null : '/whatsapp', title: 'WhatsApp',
+            href: '/whatsapp', title: 'WhatsApp',
             tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="logo-whatsapp" badge={waiting} />,
-          }}
-        />
-        <Tabs.Screen
-          name="overview"
-          options={{ href: isAdmin ? undefined : null, title: 'Overview', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
-        />
-        <Tabs.Screen
-          name="board"
-          options={{ href: isAdmin ? undefined : null, title: 'Board', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="grid-outline" /> }}
-        />
-        <Tabs.Screen
-          name="assign"
-          options={{
-            href: isAdmin ? undefined : null, title: 'Assign',
-            tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="swap-horizontal-outline" badge={unassigned} />,
           }}
         />
         <Tabs.Screen
@@ -94,7 +86,11 @@ export default function TabsLayout() {
           name="profile"
           options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="person-circle-outline" /> }}
         />
-        {/* Not in the handoff's tab set — reachable from Profile instead. */}
+        {/* Admin tools that used to have their own tab — five tabs is the
+            budget, so Board and Assign moved to Profile rows instead,
+            the same way Search Unit and Assistant already live there. */}
+        <Tabs.Screen name="board" options={{ href: null }} />
+        <Tabs.Screen name="assign" options={{ href: null }} />
         <Tabs.Screen name="units" options={{ href: null }} />
         <Tabs.Screen name="assistant" options={{ href: null }} />
       </Tabs>

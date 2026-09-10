@@ -38,7 +38,10 @@ export default function ProfileTab() {
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; badge?: string; onPress: () => void }[] = [
     { key: 'notifications', label: 'Notifications', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : undefined, onPress: () => notify('Notifications', 'Your notification feed is coming soon.') },
     { key: 'performance', label: 'My performance', icon: 'trending-up-outline', onPress: () => notify('My performance', 'Performance report coming soon.') },
-    ...(isAdmin ? [{ key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') }] : []),
+    ...(isAdmin ? [
+      { key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') },
+      { key: 'assign', label: 'Assign leads', icon: 'swap-horizontal-outline' as const, onPress: () => router.push('/assign') },
+    ] : []),
     { key: 'units', label: 'Search Unit', icon: 'cube-outline', onPress: () => router.push('/units') },
     { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
     { key: 'permissions', label: 'Permissions', icon: 'shield-checkmark-outline', badge: isAdmin ? 'Full' : 'Limited', onPress: () => notify('Permissions', isAdmin ? 'Admin: full access' : 'Rep: assigned leads only') },
