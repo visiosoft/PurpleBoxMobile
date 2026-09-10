@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, Image, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
+import { useLocalSearchParams, useRouter, Stack, useIsFocused } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -50,6 +50,10 @@ export default function ChatThreadScreen() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
+  // A pushed screen stays mounted under whatever's on top of it — switch to
+  // another bottom tab, or back to the thread list, and this poll would
+  // otherwise keep firing for a chat nobody is looking at.
+  const isFocused = useIsFocused()
 
   // .m4a/AAC — the same container the server's send-media route already
   // accepts as-is (only a browser's WebM recording needs remuxing there).
@@ -68,7 +72,7 @@ export default function ChatThreadScreen() {
     queryKey: ['wa-messages', phone],
     queryFn: () => whatsappApi.messages(phone, messageLimit),
     enabled: !!phone,
-    refetchInterval: 3_000,
+    refetchInterval: isFocused ? 3_000 : false,
     refetchIntervalInBackground: true,
   })
   useEffect(() => { if (!messagesFetching) setLoadingMore(false) }, [messagesFetching])

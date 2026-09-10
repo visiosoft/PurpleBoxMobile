@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, useIsFocused } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { whatsappApi, type WhatsAppConversation } from '../../../src/lib/whatsapp'
@@ -54,6 +54,15 @@ function waitedFor(since: string): { text: string; bg: string; fg: string } {
 
 export default function WhatsAppListScreen() {
   const router = useRouter()
+  // React Navigation keeps a tab's screen mounted once visited, so without
+  // this the 5s poll below kept running forever in the background — every
+  // tab you'd ever opened was still hitting the network on its own timer
+  // while you were off doing something else, and that competing traffic
+  // (plus the JS-thread work of handling each response) is what made
+  // switching tabs feel sluggish. Polling only while this tab is the one
+  // actually on screen fixes that; refetchOnMount still refreshes it the
+  // instant you come back.
+  const isFocused = useIsFocused()
   const [tab, setTab] = useState<InboxTab>('all')
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
@@ -74,7 +83,7 @@ export default function WhatsAppListScreen() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['wa-conversations', serverOwner, debouncedQ],
     queryFn: () => whatsappApi.conversations({ owner: serverOwner, q: debouncedQ || undefined, limit: 200 }),
-    refetchInterval: 5_000,
+    refetchInterval: isFocused ? 5_000 : false,
     refetchIntervalInBackground: true,
   })
 
