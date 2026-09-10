@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { leadApi, type Lead } from '../../src/lib/leads'
+import { leadDisplayName } from '../../src/lib/leadStatus'
 import { apiError } from '../../src/lib/api'
 import { notify } from '../../src/lib/alert'
 import { COLORS, FONTS } from '../../src/lib/theme'
@@ -68,9 +69,9 @@ export default function AssignTab() {
                 onPress={() => router.push(`/leads/${item._id}`)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: COLORS.line, padding: 14 }}
               >
-                <Avatar name={item.fullName} />
+                <Avatar name={leadDisplayName(item)} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14.5, color: COLORS.ink }} numberOfLines={1}>{item.fullName}</Text>
+                  <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14.5, color: COLORS.ink }} numberOfLines={1}>{leadDisplayName(item)}</Text>
                   <Text style={{ marginTop: 2, fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.muted }} numberOfLines={1}>{item.phone}</Text>
                 </View>
                 <PressableScale

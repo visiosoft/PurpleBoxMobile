@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { leadApi, type FollowUpLeadRow } from '../../src/lib/leads'
-import { statusMeta } from '../../src/lib/leadStatus'
+import { statusMeta, leadDisplayName } from '../../src/lib/leadStatus'
 import { apiError } from '../../src/lib/api'
 import { notify } from '../../src/lib/alert'
 import { COLORS, FONTS } from '../../src/lib/theme'
@@ -144,6 +144,7 @@ function FollowUpCard({
   const overdue = !!f.followUpAt && new Date(f.followUpAt).getTime() < Date.now()
   const { hh, mer } = slotTime(f.followUpAt)
   const meta = statusMeta(f.status)
+  const name = leadDisplayName(f)
   return (
     <View style={{ flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: COLORS.line, borderRadius: 20, backgroundColor: '#fff', padding: 14 }}>
       <View style={{ minWidth: 52, minHeight: 52, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: overdue ? COLORS.dangerTint : COLORS.purple50 }}>
@@ -153,7 +154,7 @@ function FollowUpCard({
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           <PressableScale onPress={() => onOpen(f._id)}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{f.fullName}</Text>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{name}</Text>
           </PressableScale>
           {overdue && (
             <View style={{ backgroundColor: COLORS.dangerTint, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 }}>
@@ -164,7 +165,7 @@ function FollowUpCard({
         <Text style={{ marginTop: 4, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink2 }}>{meta.label}</Text>
         <Text style={{ marginTop: 5, fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.ink4 }}>{dayLabel(f.followUpAt)}</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 11 }}>
-          <PressableScale onPress={() => onChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 38, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center' }}>
+          <PressableScale onPress={() => onChat(f.phone, name, f._id)} style={{ flex: 1, height: 38, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
           </PressableScale>
           <PressableScale onPress={() => onCall(f.phone)} style={{ paddingHorizontal: 14, height: 38, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>

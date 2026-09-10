@@ -69,3 +69,18 @@ export function statusMeta(s: string): { label: string; bg: string; text: string
 }
 
 export const TEMPERATURE_LABEL: Record<string, string> = { hot: '🔥 Hot', warm: '🌤️ Warm', cold: '❄️ Cold' }
+
+/** A generated stand-in rather than a name somebody gave us — the same
+ *  check the WhatsApp inbox and the web console's whatsappDisplay.tsx use. */
+export function isPlaceholderLeadName(n?: string): boolean {
+  return !n || /^whatsapp\s*contact/i.test(n.trim())
+}
+
+/** What to call a lead: their real name if it's a real name, otherwise the
+ *  one they set on their own WhatsApp profile, otherwise the number —
+ *  never the auto-generated "WhatsApp Contact ####" a lead gets at birth
+ *  from an inbound chat with nobody assigned to name it yet. */
+export function leadDisplayName(lead: { fullName: string; whatsappProfileName?: string; phone?: string }): string {
+  if (!isPlaceholderLeadName(lead.fullName)) return lead.fullName
+  return lead.whatsappProfileName || lead.phone || lead.fullName
+}

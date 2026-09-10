@@ -44,6 +44,10 @@ export interface Lead {
   firstName?: string
   lastName?: string
   fullName: string
+  /** The name they set on their own WhatsApp profile — real leads.js selects
+   *  it, but a caller with its own narrower .select() (leadApi.followUps())
+   *  must list it explicitly or this comes back undefined. */
+  whatsappProfileName?: string
   email?: string
   phone: string
   whatsappNo?: string
@@ -95,6 +99,7 @@ export type LeadStats = {
 export type FollowUpLeadRow = {
   _id: string
   fullName: string
+  whatsappProfileName?: string
   phone: string
   status: LeadStatus
   followUpAt: string | null

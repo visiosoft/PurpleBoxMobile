@@ -8,7 +8,7 @@ import { useAuth } from '../../src/lib/auth'
 import { useNotifications } from '../../src/lib/notifications'
 import { notify } from '../../src/lib/alert'
 import { leadApi, type FollowUpLeadRow, type Lead } from '../../src/lib/leads'
-import { statusMeta } from '../../src/lib/leadStatus'
+import { statusMeta, leadDisplayName } from '../../src/lib/leadStatus'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, RADII, SHADOWS, avatarStyle } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 
@@ -151,16 +151,17 @@ export default function HomeTab() {
             {attention.map((lead: Lead, i: number) => {
               const av = avatarStyle(i)
               const meta = statusMeta(lead.status)
+              const name = leadDisplayName(lead)
               return (
                 <View key={lead._id} style={{ borderWidth: 1, borderColor: COLORS.line, borderRadius: 20, padding: 14, backgroundColor: '#fff', ...SHADOWS.card }}>
                   <View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
                     <PressableScale onPress={() => openLead(lead._id)} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontFamily: FONTS.display, fontSize: 15, color: av.text }}>{lead.fullName.slice(0, 1).toUpperCase()}</Text>
+                      <Text style={{ fontFamily: FONTS.display, fontSize: 15, color: av.text }}>{name.slice(0, 1).toUpperCase()}</Text>
                     </PressableScale>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
                         <PressableScale onPress={() => openLead(lead._id)}>
-                          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{lead.fullName}</Text>
+                          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{name}</Text>
                         </PressableScale>
                         <View style={{ backgroundColor: meta.bg, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 }}>
                           <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10.5, color: meta.text }}>{meta.label}</Text>
@@ -181,7 +182,7 @@ export default function HomeTab() {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                     <PressableScale
-                      onPress={() => openChat(lead.phoneNormalized, lead.fullName, lead._id)}
+                      onPress={() => openChat(lead.phoneNormalized, name, lead._id)}
                       style={{ flex: 1, height: 42, paddingHorizontal: 12, borderRadius: 13, backgroundColor: COLORS.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, ...SHADOWS.whatsappGlow }}
                     >
                       <Ionicons name="logo-whatsapp" size={15} color="#fff" />
@@ -208,17 +209,19 @@ export default function HomeTab() {
           <EmptyRow text="No follow-ups today. You're all caught up." />
         ) : (
           <View style={{ gap: 11 }}>
-            {todayFu.map((f: FollowUpLeadRow) => (
+            {todayFu.map((f: FollowUpLeadRow) => {
+              const fName = leadDisplayName(f)
+              return (
               <View key={f._id} style={{ borderWidth: 1, borderColor: COLORS.line, borderRadius: 20, padding: 14, backgroundColor: '#fff', ...SHADOWS.card }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                   <PressableScale onPress={() => openLead(f._id)} style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{f.fullName}</Text>
+                    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{fName}</Text>
                     <Text style={{ marginTop: 3, fontFamily: FONTS.bodyMedium, fontSize: 11.5, color: COLORS.ink3 }}>{statusMeta(f.status).label}</Text>
                   </PressableScale>
                   <Text style={{ fontFamily: FONTS.display, fontSize: 15, letterSpacing: -0.3, color: COLORS.purple600 }}>{formatTime(f.followUpAt)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                  <PressableScale onPress={() => openChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 40, paddingHorizontal: 8, borderRadius: 12, backgroundColor: COLORS.successTintSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <PressableScale onPress={() => openChat(f.phone, fName, f._id)} style={{ flex: 1, height: 40, paddingHorizontal: 8, borderRadius: 12, backgroundColor: COLORS.successTintSoft, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.success }}>WhatsApp</Text>
                   </PressableScale>
                   <PressableScale onPress={() => call(f.phone)} style={{ flex: 1, height: 40, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
@@ -229,7 +232,8 @@ export default function HomeTab() {
                   </PressableScale>
                 </View>
               </View>
-            ))}
+              )
+            })}
           </View>
         )}
 

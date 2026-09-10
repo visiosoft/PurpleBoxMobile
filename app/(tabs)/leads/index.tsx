@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { leadApi, type Lead } from '../../../src/lib/leads'
 import { apiError } from '../../../src/lib/api'
-import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
+import { LEAD_STATUS_FLOW, statusMeta, leadDisplayName } from '../../../src/lib/leadStatus'
 import { COLORS, FONTS, RADII, SHADOWS, avatarStyle } from '../../../src/lib/theme'
 import PressableScale from '../../../src/components/PressableScale'
 import ScreenHeader from '../../../src/components/ScreenHeader'
@@ -63,7 +63,7 @@ export default function LeadsListScreen() {
   const total = data?.pages[0]?.total ?? stats?.total ?? 0
 
   function openChat(lead: Lead) {
-    router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: lead.fullName, leadId: lead._id } })
+    router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: leadDisplayName(lead), leadId: lead._id } })
   }
 
   return (
@@ -176,17 +176,18 @@ function LeadCard({
   const meta = statusMeta(lead.status)
   const av = avatarStyle(index)
   const fu = followUpLabel(lead)
+  const name = leadDisplayName(lead)
   return (
     <View style={{ borderWidth: 1, borderColor: COLORS.line, borderRadius: RADII.card, backgroundColor: '#fff', overflow: 'hidden', ...SHADOWS.card }}>
       <View style={{ height: 3, backgroundColor: meta.dot }} />
       <View style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
           <PressableScale onPress={onOpen} style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: FONTS.display, fontSize: 16, color: av.text }}>{lead.fullName.slice(0, 1).toUpperCase()}</Text>
+            <Text style={{ fontFamily: FONTS.display, fontSize: 16, color: av.text }}>{name.slice(0, 1).toUpperCase()}</Text>
           </PressableScale>
           <View style={{ flex: 1, minWidth: 0 }}>
             <PressableScale onPress={onOpen}>
-              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15.5, color: COLORS.ink }}>{lead.fullName}</Text>
+              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15.5, color: COLORS.ink }}>{name}</Text>
             </PressableScale>
             <Text style={{ marginTop: 2, fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink3, fontVariant: ['tabular-nums'] }}>{lead.phone}</Text>
           </View>

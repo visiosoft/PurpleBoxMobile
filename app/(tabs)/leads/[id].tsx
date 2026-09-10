@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { leadApi, type AttemptChannel, type AttemptOutcome, type LeadStatus, type LeadTimelineEntry } from '../../../src/lib/leads'
-import { LEAD_STATUS_FLOW, statusLabel, statusMeta } from '../../../src/lib/leadStatus'
+import { LEAD_STATUS_FLOW, statusLabel, statusMeta, leadDisplayName } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
 import { notify, confirmAction } from '../../../src/lib/alert'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, RADII, SHADOWS } from '../../../src/lib/theme'
@@ -106,6 +106,7 @@ export default function LeadDetailScreen() {
   }
 
   const meta = statusMeta(lead.status)
+  const name = leadDisplayName(lead)
   const timeline: LeadTimelineEntry[] = [...(lead.timeline ?? [])].reverse()
   const notes = [...(lead.comments ?? [])].reverse()
 
@@ -134,10 +135,10 @@ export default function LeadDetailScreen() {
 
           <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 13 }}>
             <View style={{ width: 56, height: 56, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: FONTS.display, fontSize: 21, color: '#fff' }}>{lead.fullName.slice(0, 1).toUpperCase()}</Text>
+              <Text style={{ fontFamily: FONTS.display, fontSize: 21, color: '#fff' }}>{name.slice(0, 1).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.3, color: '#fff' }} numberOfLines={1}>{lead.fullName}</Text>
+              <Text style={{ fontFamily: FONTS.display, fontSize: 22, letterSpacing: -0.3, color: '#fff' }} numberOfLines={1}>{name}</Text>
               <Text style={{ marginTop: 3, fontFamily: FONTS.body, fontSize: 13, color: 'rgba(255,255,255,0.82)', fontVariant: ['tabular-nums'] }}>{lead.phone}</Text>
             </View>
           </View>
@@ -156,7 +157,7 @@ export default function LeadDetailScreen() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 16 }}>
           <PressableScale
-            onPress={() => router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: lead.fullName, leadId: lead._id } })}
+            onPress={() => router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name, leadId: lead._id } })}
             style={{ height: 52, paddingHorizontal: 16, borderRadius: 17, backgroundColor: COLORS.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, ...SHADOWS.whatsappGlow }}
           >
             <Ionicons name="logo-whatsapp" size={19} color="#fff" />
@@ -296,7 +297,7 @@ export default function LeadDetailScreen() {
 
           <View style={{ flexDirection: 'row', gap: 9, marginTop: 6 }}>
             <PressableScale
-              onPress={() => confirmAction('Mark as Won', `Mark ${lead.fullName} as won?`, 'Mark as Won', () => changeStatus.mutate('won'))}
+              onPress={() => confirmAction('Mark as Won', `Mark ${name} as won?`, 'Mark as Won', () => changeStatus.mutate('won'))}
               disabled={changeStatus.isPending}
               style={{ flex: 1, height: 48, paddingHorizontal: 12, borderRadius: 15, backgroundColor: COLORS.successTint, alignItems: 'center', justifyContent: 'center' }}
             >
@@ -312,7 +313,7 @@ export default function LeadDetailScreen() {
           </View>
 
           <PressableScale
-            onPress={() => confirmAction('Convert to customer', `Create a customer record for ${lead.fullName}?`, 'Convert', () => convert.mutate())}
+            onPress={() => confirmAction('Convert to customer', `Create a customer record for ${name}?`, 'Convert', () => convert.mutate())}
             disabled={convert.isPending}
             style={{ backgroundColor: COLORS.purple600, borderRadius: 15, paddingVertical: 14, alignItems: 'center' }}
           >
@@ -336,7 +337,7 @@ export default function LeadDetailScreen() {
         onSelect={(reason) => markLost.mutate(reason)}
         onClose={() => setLostPickerOpen(false)}
       />
-      <ScoreSheet leadId={lead._id} leadName={lead.fullName} visible={scoreOpen} onClose={() => setScoreOpen(false)} />
+      <ScoreSheet leadId={lead._id} leadName={name} visible={scoreOpen} onClose={() => setScoreOpen(false)} />
     </>
   )
 }
