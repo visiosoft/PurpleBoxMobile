@@ -32,7 +32,11 @@ registration step.
 | 2 | WhatsApp | ✅ Done | `GET/POST /api/whatsapp/*`, `GET /api/leads/:id/score` |
 | 3 | Leads (incl. AI scoring) | ✅ Done | `GET /api/leads`, `/stats`, `/:id`, `/:id/status`, `/:id/attempts`, `/:id/comments`, `/:id/convert`, `/:id/score` |
 | 4 | Search Unit | ✅ Done | `GET /api/units`, `/api/units/:id`, `GET /api/quotes/available-units` |
-| 5 | AI Chat Bot | ⏳ Next | `POST /api/assistant` |
+| 5 | AI Chat Bot | ✅ Done | `POST /api/assistant/ask`, `/confirm`, `/cancel`, `GET /capabilities` |
+
+All five features are built. See "What's built so far" below for each one,
+and "Left out of this pass" under each for what deliberately isn't here
+yet.
 
 Nothing is skipped — each stub tab already names its real endpoint and this
 plan file, so the scope is locked in even before it's built.
@@ -49,8 +53,6 @@ plan file, so the scope is locked in even before it's built.
 - `app/(tabs)/_layout.tsx` — 5-tab shell: WhatsApp, Leads, Search Unit,
   Assistant, Profile
 - `app/(tabs)/profile.tsx` — real screen: shows the signed-in user, sign out
-- `app/(tabs)/assistant.tsx` — placeholder screen naming the endpoint it
-  will call
 
 ## What's built so far (Feature 2 — WhatsApp)
 
@@ -128,6 +130,27 @@ availability and pricing while on a call, not building a quote from
 scratch on a phone. A rep who wants to book still finishes that on the
 web app, the same way the web app's own Units page hands off to a
 separate `/quotes/new` flow rather than building the quote inline.
+
+## What's built so far (Feature 5 — AI Chat Bot)
+
+- `app/(tabs)/assistant.tsx` — a full multi-turn chat screen: gated on
+  `GET /assistant/capabilities` (hidden/explained if the account's role
+  can't use it, matching the web app's own gate), example-prompt chips on
+  an empty conversation, tool-usage chips under each answer, a yellow-
+  tinted bubble when the server flags an answer as `grounded: false`,
+  tappable links (a `/leads/:id` link jumps straight into Feature 3's lead
+  detail screen), and the confirm/cancel card for any proposed action
+  (creating a quote, sending an email) — nothing the assistant proposes
+  runs until that card is confirmed, same as web
+- `src/lib/assistant.ts` — types and calls for `/assistant/ask` (stateless;
+  the client resends the last 8 turns as `history` each call — there's no
+  streaming and no conversation id on the server), `/confirm`, `/cancel`
+
+**Left out of this pass**: the `compose` hand-off shapes (email/WhatsApp
+drafting UI inside the assistant reply) and deep-linking every kind of
+`links` path (only a lead link is wired to an in-app screen; anything else
+tells the user to open it on the web app) — the core ask/answer/confirm
+loop is complete and these are polish on top of it.
 
 Verified: `npx tsc --noEmit` clean, `npx expo export --platform ios`
 bundles successfully after each feature.
