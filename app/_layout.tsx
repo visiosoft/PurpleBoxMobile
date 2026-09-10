@@ -40,7 +40,7 @@ const queryClient = new QueryClient({
  * than an authenticated-looking blank one.
  */
 function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoading } = useAuth()
+  const { isSignedIn, isLoading, user } = useAuth()
   const segments = useSegments()
   const router = useRouter()
 
@@ -50,7 +50,10 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
     if (!isSignedIn && inAuthGroup) {
       router.replace('/login')
     } else if (isSignedIn && !inAuthGroup) {
-      router.replace('/whatsapp')
+      // Same landing tab as (tabs)/_layout.tsx's own initialRouteName —
+      // this was still sending everyone to /whatsapp, a leftover from
+      // before the Home/Overview dashboard existed.
+      router.replace(user?.role === 'admin' ? '/overview' : '/home')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, isLoading, segments.join('/')])
