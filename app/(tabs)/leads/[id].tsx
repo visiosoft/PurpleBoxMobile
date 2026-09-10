@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  View, Text, TextInput, ActivityIndicator, ScrollView, Linking, Alert,
+  View, Text, TextInput, ActivityIndicator, ScrollView, Linking,
 } from 'react-native'
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { leadApi, type AttemptChannel, type AttemptOutcome, type LeadStatus, type LeadTimelineEntry } from '../../../src/lib/leads'
 import { LEAD_STATUS_FLOW, statusLabel, statusMeta } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
+import { notify, confirmAction } from '../../../src/lib/alert'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, RADII, SHADOWS } from '../../../src/lib/theme'
 import PickerSheet from '../../../src/components/PickerSheet'
 import PressableScale from '../../../src/components/PressableScale'
@@ -62,31 +63,31 @@ export default function LeadDetailScreen() {
   const changeStatus = useMutation({
     mutationFn: (status: LeadStatus) => leadApi.updateStatus(id, status),
     onSuccess: invalidate,
-    onError: (e) => Alert.alert('Could not update status', apiError(e)),
+    onError: (e) => notify('Could not update status', apiError(e)),
   })
 
   const markLost = useMutation({
     mutationFn: (reason: string) => leadApi.updateStatus(id, 'lost', reason),
     onSuccess: invalidate,
-    onError: (e) => Alert.alert('Could not update status', apiError(e)),
+    onError: (e) => notify('Could not update status', apiError(e)),
   })
 
   const logAttempt = useMutation({
     mutationFn: (outcome: AttemptOutcome) => leadApi.addAttempt(id, { outcome, channel, note: attemptNote.trim() || undefined }),
     onSuccess: () => { setAttemptNote(''); invalidate() },
-    onError: (e) => Alert.alert('Could not log attempt', apiError(e)),
+    onError: (e) => notify('Could not log attempt', apiError(e)),
   })
 
   const addComment = useMutation({
     mutationFn: (text: string) => leadApi.addComment(id, text),
     onSuccess: () => { setComment(''); invalidate() },
-    onError: (e) => Alert.alert('Could not add note', apiError(e)),
+    onError: (e) => notify('Could not add note', apiError(e)),
   })
 
   const convert = useMutation({
     mutationFn: () => leadApi.convertToCustomer(id),
-    onSuccess: (res) => Alert.alert(res.created ? 'Customer created' : 'Already a customer', res.customer.fullName),
-    onError: (e) => Alert.alert('Could not convert', apiError(e)),
+    onSuccess: (res) => notify(res.created ? 'Customer created' : 'Already a customer', res.customer.fullName),
+    onError: (e) => notify('Could not convert', apiError(e)),
   })
 
   if (isLoading) {
@@ -295,10 +296,7 @@ export default function LeadDetailScreen() {
 
           <View style={{ flexDirection: 'row', gap: 9, marginTop: 6 }}>
             <PressableScale
-              onPress={() => Alert.alert('Mark as Won', `Mark ${lead.fullName} as won?`, [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Mark as Won', onPress: () => changeStatus.mutate('won') },
-              ])}
+              onPress={() => confirmAction('Mark as Won', `Mark ${lead.fullName} as won?`, 'Mark as Won', () => changeStatus.mutate('won'))}
               disabled={changeStatus.isPending}
               style={{ flex: 1, height: 48, borderRadius: 15, backgroundColor: COLORS.successTint, alignItems: 'center', justifyContent: 'center' }}
             >
@@ -314,10 +312,7 @@ export default function LeadDetailScreen() {
           </View>
 
           <PressableScale
-            onPress={() => Alert.alert('Convert to customer', `Create a customer record for ${lead.fullName}?`, [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Convert', onPress: () => convert.mutate() },
-            ])}
+            onPress={() => confirmAction('Convert to customer', `Create a customer record for ${lead.fullName}?`, 'Convert', () => convert.mutate())}
             disabled={convert.isPending}
             style={{ backgroundColor: COLORS.purple600, borderRadius: 15, paddingVertical: 14, alignItems: 'center' }}
           >

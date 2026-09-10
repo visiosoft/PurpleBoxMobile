@@ -1,10 +1,11 @@
-import { View, Text, FlatList, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, FlatList, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { leadApi, type Lead } from '../../src/lib/leads'
 import { apiError } from '../../src/lib/api'
+import { notify } from '../../src/lib/alert'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import Avatar from '../../src/components/Avatar'
 import PressableScale from '../../src/components/PressableScale'
@@ -73,7 +74,7 @@ export default function AssignTab() {
                   <Text style={{ marginTop: 2, fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.muted }} numberOfLines={1}>{item.phone}</Text>
                 </View>
                 <PressableScale
-                  onPress={() => Alert.alert('Assign to a rep', 'Picking a rep to assign to is coming soon — open the lead to assign it manually for now.')}
+                  onPress={() => notify('Assign to a rep', 'Picking a rep to assign to is coming soon — open the lead to assign it manually for now.')}
                   style={{ paddingHorizontal: 12, height: 34, borderRadius: 10, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12, color: COLORS.purple600 }}>Assign</Text>

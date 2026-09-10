@@ -1,10 +1,11 @@
-import { View, Text, Alert } from 'react-native'
+import { View, Text } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../src/lib/auth'
 import { useNotifications } from '../../src/lib/notifications'
+import { notify, confirmAction } from '../../src/lib/alert'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 
@@ -31,19 +32,16 @@ export default function ProfileTab() {
   const role = ROLE_META[user?.role ?? ''] ?? ROLE_META.sales_rep
 
   function confirmLogout() {
-    Alert.alert('Sign out', 'You can sign back in any time with the same account.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => logout() },
-    ])
+    confirmAction('Sign out', 'You can sign back in any time with the same account.', 'Sign out', () => logout(), { destructive: true })
   }
 
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; badge?: string; onPress: () => void }[] = [
-    { key: 'notifications', label: 'Notifications', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : undefined, onPress: () => Alert.alert('Notifications', 'Your notification feed is coming soon.') },
-    { key: 'performance', label: 'My performance', icon: 'trending-up-outline', onPress: () => Alert.alert('My performance', 'Performance report coming soon.') },
+    { key: 'notifications', label: 'Notifications', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : undefined, onPress: () => notify('Notifications', 'Your notification feed is coming soon.') },
+    { key: 'performance', label: 'My performance', icon: 'trending-up-outline', onPress: () => notify('My performance', 'Performance report coming soon.') },
     ...(isAdmin ? [{ key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') }] : []),
     { key: 'units', label: 'Search Unit', icon: 'cube-outline', onPress: () => router.push('/units') },
     { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
-    { key: 'permissions', label: 'Permissions', icon: 'shield-checkmark-outline', badge: isAdmin ? 'Full' : 'Limited', onPress: () => Alert.alert('Permissions', isAdmin ? 'Admin: full access' : 'Rep: assigned leads only') },
+    { key: 'permissions', label: 'Permissions', icon: 'shield-checkmark-outline', badge: isAdmin ? 'Full' : 'Limited', onPress: () => notify('Permissions', isAdmin ? 'Admin: full access' : 'Rep: assigned leads only') },
     { key: 'signout', label: 'Sign out', icon: 'log-out-outline', onPress: confirmLogout },
   ]
 

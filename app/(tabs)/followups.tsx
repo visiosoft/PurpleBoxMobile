@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, FlatList, ActivityIndicator, Linking, Alert } from 'react-native'
+import { View, Text, FlatList, ActivityIndicator, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { leadApi, type FollowUpLeadRow } from '../../src/lib/leads'
 import { statusMeta } from '../../src/lib/leadStatus'
 import { apiError } from '../../src/lib/api'
+import { notify } from '../../src/lib/alert'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 import ScreenHeader from '../../src/components/ScreenHeader'
@@ -65,7 +66,7 @@ export default function FollowUpsTab() {
     router.push({ pathname: '/whatsapp/[phone]', params: { phone, name, leadId } })
   }
   function call(phone: string) {
-    Linking.openURL(`tel:${phone}`).catch(() => Alert.alert('Could not start a call'))
+    Linking.openURL(`tel:${phone}`).catch(() => notify('Could not start a call'))
   }
 
   return (

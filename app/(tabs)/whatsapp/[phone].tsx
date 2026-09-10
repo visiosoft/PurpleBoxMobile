@@ -12,6 +12,7 @@ import { whatsappApi, type WhatsAppMsg } from '../../../src/lib/whatsapp'
 import { leadApi, type LeadStatus } from '../../../src/lib/leads'
 import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
+import { notify } from '../../../src/lib/alert'
 import { markSeen } from '../../../src/lib/seen'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Attachment from '../../../src/components/whatsapp/Attachment'
@@ -55,12 +56,12 @@ export default function ChatThreadScreen() {
   const changeStatus = useMutation({
     mutationFn: (status: LeadStatus) => leadApi.updateStatus(leadId!, status),
     onSuccess: invalidateLead,
-    onError: (e) => Alert.alert('Could not update status', apiError(e)),
+    onError: (e) => notify('Could not update status', apiError(e)),
   })
   const scheduleFollowUp = useMutation({
     mutationFn: (iso: string) => leadApi.scheduleFollowUp(leadId!, iso),
     onSuccess: invalidateLead,
-    onError: (e) => Alert.alert('Could not schedule follow-up', apiError(e)),
+    onError: (e) => notify('Could not schedule follow-up', apiError(e)),
   })
 
   useEffect(() => {
@@ -120,6 +121,11 @@ export default function ChatThreadScreen() {
   }
 
   function pickMedia() {
+    // Alert.alert's multi-button action sheet is a no-op on web (react-native-web
+    // stubs it out entirely), and a native camera capture sheet doesn't really
+    // exist on web either — so web goes straight to the one picker that works
+    // everywhere, the library/file picker.
+    if (Platform.OS === 'web') { launchPicker('library'); return }
     Alert.alert('Attach', undefined, [
       { text: 'Photo Library', onPress: () => launchPicker('library') },
       { text: 'Camera', onPress: () => launchPicker('camera') },

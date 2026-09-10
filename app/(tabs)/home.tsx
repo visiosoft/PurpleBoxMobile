@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Linking, Alert } from 'react-native'
+import { View, Text, ScrollView, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../src/lib/auth'
 import { useNotifications } from '../../src/lib/notifications'
+import { notify } from '../../src/lib/alert'
 import { leadApi, type FollowUpLeadRow, type Lead } from '../../src/lib/leads'
 import { statusMeta } from '../../src/lib/leadStatus'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, RADII, SHADOWS, avatarStyle } from '../../src/lib/theme'
@@ -73,7 +74,7 @@ export default function HomeTab() {
     router.push({ pathname: '/whatsapp/[phone]', params: { phone, name, leadId: leadId ?? '' } })
   }
   function call(phone: string) {
-    Linking.openURL(`tel:${phone}`).catch(() => Alert.alert('Could not start a call'))
+    Linking.openURL(`tel:${phone}`).catch(() => notify('Could not start a call'))
   }
 
   return (
@@ -97,7 +98,7 @@ export default function HomeTab() {
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <PressableScale
-                onPress={() => Alert.alert('Notifications', 'Your notification feed is coming soon.')}
+                onPress={() => notify('Notifications', 'Your notification feed is coming soon.')}
                 style={{ width: 42, height: 42, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}
               >
                 <Ionicons name="notifications-outline" size={19} color="#fff" />

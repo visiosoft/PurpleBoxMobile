@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  View, Text, TextInput, FlatList, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Linking,
+  View, Text, TextInput, FlatList, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -11,6 +11,7 @@ import {
   type AssistantLink, type AssistantMessage, type AssistantPending, type AssistantTool,
 } from '../../src/lib/assistant'
 import { apiError, API_BASE_URL } from '../../src/lib/api'
+import { notify } from '../../src/lib/alert'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 import ScreenHeader from '../../src/components/ScreenHeader'
@@ -66,7 +67,7 @@ export default function AssistantScreen() {
         Linking.openURL(url).catch(() => {})
       }
     },
-    onError: (e) => Alert.alert('Could not confirm', apiError(e)),
+    onError: (e) => notify('Could not confirm', apiError(e)),
   })
 
   const cancelAction = useMutation({
@@ -77,7 +78,7 @@ export default function AssistantScreen() {
         { id: nextId(), role: 'assistant', content: res.message },
       ])
     },
-    onError: (e) => Alert.alert('Could not cancel', apiError(e)),
+    onError: (e) => notify('Could not cancel', apiError(e)),
   })
 
   function send(question: string) {
@@ -91,7 +92,7 @@ export default function AssistantScreen() {
   function openLink(link: AssistantLink) {
     const leadMatch = link.path.match(/^\/leads\/([a-f0-9]{24})/i)
     if (leadMatch) { router.push(`/leads/${leadMatch[1]}`); return }
-    Alert.alert(link.label, 'Open this on the web app to view it.')
+    notify(link.label, 'Open this on the web app to view it.')
   }
 
   if (capsLoading) {
