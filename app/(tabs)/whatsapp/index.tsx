@@ -10,7 +10,7 @@ import { getSeenMap, isUnread, markSeen } from '../../../src/lib/seen'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
 import PressableScale from '../../../src/components/PressableScale'
-import AppHeader from '../../../src/components/AppHeader'
+import ScreenHeader from '../../../src/components/ScreenHeader'
 
 const TABS: { key: OwnerTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -78,7 +78,7 @@ export default function WhatsAppListScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <AppHeader title="WhatsApp" />
+      <ScreenHeader title="WhatsApp" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
         <View

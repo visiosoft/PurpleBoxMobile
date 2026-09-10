@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth, apiError } from '../src/lib/auth'
-import { COLORS, FONTS, HERO_GRADIENT } from '../src/lib/theme'
+import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../src/lib/theme'
 import PressableScale from '../src/components/PressableScale'
 
 /**
@@ -45,7 +45,8 @@ export default function Login() {
         {/* Hero — the one place the brand gets to fill the screen, so the
             app announces itself before it asks for anything. */}
         <LinearGradient
-          colors={HERO_GRADIENT}
+          colors={GRADIENT_PRIMARY}
+          locations={GRADIENT_PRIMARY_LOCATIONS}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ alignItems: 'center', paddingTop: 76, paddingBottom: 60, borderBottomLeftRadius: 36, borderBottomRightRadius: 36 }}

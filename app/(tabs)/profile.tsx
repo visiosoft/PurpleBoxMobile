@@ -2,25 +2,33 @@ import { View, Text, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useAuth } from '../../src/lib/auth'
-import { COLORS, FONTS, HERO_GRADIENT } from '../../src/lib/theme'
+import { useNotifications } from '../../src/lib/notifications'
+import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
-import AppHeader from '../../src/components/AppHeader'
 
-const ROLE_LABEL: Record<string, string> = {
-  admin: 'Admin',
-  sales_rep: 'Sales Rep',
-  accounts: 'Accounts',
-  staff: 'Staff',
+const ROLE_META: Record<string, { label: string; hint: string }> = {
+  admin: { label: 'Sales admin', hint: 'You can see all leads, assign them and monitor the team.' },
+  sales_rep: { label: 'Sales representative', hint: 'You only see leads assigned to you by admin.' },
+  accounts: { label: 'Accounts', hint: 'You only see leads assigned to you by admin.' },
+  staff: { label: 'Staff', hint: 'You only see leads assigned to you by admin.' },
 }
 
 /**
- * The one fully real screen outside login in this first pass — every app
- * needs a way to actually sign out and see whose account is signed in,
- * so this exists now rather than waiting for the four feature tabs.
+ * Design handoff's Profile screen, minus the "Switch workspace" toggle —
+ * that was a demo convenience over fake data; here the role comes from
+ * the signed-in account for real, so there's nothing to switch. Search
+ * Unit and Assistant aren't in the handoff's 5-tab nav at all, so they
+ * live here as rows instead of being dropped, the same way the handoff
+ * itself makes admin's "Lead board" a Profile row alongside its own tab.
  */
 export default function ProfileTab() {
+  const router = useRouter()
   const { user, logout } = useAuth()
+  const { count: notifCount } = useNotifications()
+  const isAdmin = user?.role === 'admin'
+  const role = ROLE_META[user?.role ?? ''] ?? ROLE_META.sales_rep
 
   function confirmLogout() {
     Alert.alert('Sign out', 'You can sign back in any time with the same account.', [
@@ -29,48 +37,67 @@ export default function ProfileTab() {
     ])
   }
 
+  const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; badge?: string; onPress: () => void }[] = [
+    { key: 'notifications', label: 'Notifications', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : undefined, onPress: () => Alert.alert('Notifications', 'Your notification feed is coming soon.') },
+    { key: 'performance', label: 'My performance', icon: 'trending-up-outline', onPress: () => Alert.alert('My performance', 'Performance report coming soon.') },
+    ...(isAdmin ? [{ key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') }] : []),
+    { key: 'units', label: 'Search Unit', icon: 'cube-outline', onPress: () => router.push('/units') },
+    { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
+    { key: 'permissions', label: 'Permissions', icon: 'shield-checkmark-outline', badge: isAdmin ? 'Full' : 'Limited', onPress: () => Alert.alert('Permissions', isAdmin ? 'Admin: full access' : 'Rep: assigned leads only') },
+    { key: 'signout', label: 'Sign out', icon: 'log-out-outline', onPress: confirmLogout },
+  ]
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <AppHeader title="Profile" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-          <LinearGradient
-            colors={HERO_GRADIENT}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 24, padding: 22, marginBottom: 20, shadowColor: COLORS.brandDark, shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' }}>
-                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 22, color: '#fff' }}>
-                  {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: FONTS.display, fontSize: 19, color: '#fff', letterSpacing: -0.3 }} numberOfLines={1}>{user?.name || 'Unknown'}</Text>
-                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 }} numberOfLines={1}>{user?.email}</Text>
-                <View style={{ alignSelf: 'flex-start', marginTop: 8, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
-                  <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: '#fff' }}>
-                    {ROLE_LABEL[user?.role ?? ''] || user?.role}
-                  </Text>
-                </View>
-              </View>
+        <LinearGradient
+          colors={GRADIENT_PRIMARY}
+          locations={GRADIENT_PRIMARY_LOCATIONS}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 30, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ width: 60, height: 60, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: FONTS.display, fontSize: 23, color: COLORS.purple600 }}>
+                {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
+              </Text>
             </View>
-          </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: FONTS.display, fontSize: 22, color: '#fff', letterSpacing: -0.4 }} numberOfLines={1}>{user?.name || 'Unknown'}</Text>
+              <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: 'rgba(255,255,255,0.82)', marginTop: 3 }} numberOfLines={1}>
+                {role.label} · PurpleBox Storage
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
 
-          <PressableScale
-            onPress={confirmLogout}
-            style={{
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-              height: 52, borderRadius: 16, borderWidth: 1, borderColor: COLORS.badBg, backgroundColor: '#fff',
-            }}
-          >
-            <Ionicons name="log-out-outline" size={18} color={COLORS.bad} />
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.bad }}>Sign out</Text>
-          </PressableScale>
-
-          <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.faint, textAlign: 'center', marginTop: 24 }}>
-            PurpleBox · Same account as office.purplebox.ae
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 15 }}>
+            {rows.map((r, i) => (
+              <PressableScale
+                key={r.key}
+                onPress={r.onPress}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14,
+                  borderBottomWidth: i === rows.length - 1 ? 0 : 1, borderBottomColor: COLORS.lineSoft,
+                }}
+              >
+                <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={r.icon} size={16} color={COLORS.purple600} />
+                </View>
+                <Text style={{ flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 14, color: COLORS.ink }}>{r.label}</Text>
+                {r.badge ? (
+                  <View style={{ backgroundColor: COLORS.purple100, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10.5, color: COLORS.purple600 }}>{r.badge}</Text>
+                  </View>
+                ) : null}
+                <Ionicons name="chevron-forward" size={16} color={COLORS.chevron} />
+              </PressableScale>
+            ))}
+          </View>
+          <Text style={{ textAlign: 'center', fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.ink4, marginTop: 20 }}>
+            PurpleBox CRM · v2.0 · Al Quoz 2, Dubai
           </Text>
         </View>
       </SafeAreaView>

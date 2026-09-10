@@ -46,4 +46,26 @@ export function statusTone(s: string): { bg: string; fg: string } {
   return TONE[STATUS_TONE[s] ?? 'gray']
 }
 
+/** Design-handoff status badge look (pastel bg / dark text / saturated
+ *  dot) re-keyed onto the real 9 backend statuses — the handoff's own
+ *  7-stage demo pipeline ('interested', 'negotiating', ...) doesn't exist
+ *  server-side, so its hex values are kept but mapped onto LEAD_STATUS_FLOW
+ *  instead of the prototype's fictional keys. */
+const STATUS_META: Record<string, { bg: string; text: string; dot: string }> = {
+  new: { bg: '#E8EEFF', text: '#2947C9', dot: '#3B5BFF' },
+  contact_attempted: { bg: '#FFEEDD', text: '#B45309', dot: '#F97316' },
+  contacted: { bg: '#F3EAFF', text: '#6B2BC9', dot: '#8B5CF6' },
+  site_visit_scheduled: { bg: '#E9EAFF', text: '#3A2BC9', dot: '#4F46E5' },
+  follow_up_scheduled: { bg: '#FFEEDD', text: '#B45309', dot: '#F97316' },
+  quotation_sent: { bg: '#FFF7D6', text: '#8A6D00', dot: '#EAB308' },
+  won: { bg: '#DEF7E6', text: '#0F7A4A', dot: '#22C55E' },
+  lost: { bg: '#F1EFF3', text: '#6B6473', dot: '#9CA3AF' },
+  already_customer: { bg: '#DDF4F7', text: '#0E7490', dot: '#22D3EE' },
+}
+
+export function statusMeta(s: string): { label: string; bg: string; text: string; dot: string } {
+  const meta = STATUS_META[s] ?? STATUS_META.lost
+  return { label: statusLabel(s), ...meta }
+}
+
 export const TEMPERATURE_LABEL: Record<string, string> = { hot: '🔥 Hot', warm: '🌤️ Warm', cold: '❄️ Cold' }

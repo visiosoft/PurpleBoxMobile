@@ -10,7 +10,7 @@ import { COLORS, FONTS } from '../../src/lib/theme'
 import { STATUS_STYLE, statusLabel } from '../../src/components/units/statusStyle'
 import UnitDetailSheet from '../../src/components/units/UnitDetailSheet'
 import PressableScale from '../../src/components/PressableScale'
-import AppHeader from '../../src/components/AppHeader'
+import ScreenHeader from '../../src/components/ScreenHeader'
 
 const STATUS_FILTERS: { value: UnitStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -60,7 +60,7 @@ export default function UnitsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <AppHeader title="Search Unit" />
+      <ScreenHeader title="Search Unit" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
         <View

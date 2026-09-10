@@ -13,7 +13,7 @@ import {
 import { apiError, API_BASE_URL } from '../../src/lib/api'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
-import AppHeader from '../../src/components/AppHeader'
+import ScreenHeader from '../../src/components/ScreenHeader'
 
 type ChatMsg = {
   id: string
@@ -97,7 +97,7 @@ export default function AssistantScreen() {
   if (capsLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-        <AppHeader title="Assistant" />
+        <ScreenHeader title="Assistant" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={COLORS.brand} />
         </View>
@@ -108,7 +108,7 @@ export default function AssistantScreen() {
   if (caps && !(caps.enabled && caps.allowed)) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-        <AppHeader title="Assistant" />
+        <ScreenHeader title="Assistant" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <Ionicons name="sparkles-outline" size={40} color={COLORS.faint} />
           <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.muted, marginTop: 14, textAlign: 'center' }}>
@@ -121,7 +121,7 @@ export default function AssistantScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <AppHeader title="Assistant" />
+      <ScreenHeader title="Assistant" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {messages.length === 0 ? (

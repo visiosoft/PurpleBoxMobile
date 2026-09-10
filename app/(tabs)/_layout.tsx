@@ -1,71 +1,120 @@
-import { View } from 'react-native'
+import { View, Text } from 'react-native'
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS, FONTS } from '../../src/lib/theme'
-import { AppChromeProvider, useAppChrome } from '../../src/lib/appChrome'
-import AppDrawer from '../../src/components/AppDrawer'
-import NotificationPanel from '../../src/components/NotificationPanel'
+import { useQuery } from '@tanstack/react-query'
+import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../src/lib/theme'
+import { useAuth } from '../../src/lib/auth'
+import { useNotifications } from '../../src/lib/notifications'
+import { leadApi } from '../../src/lib/leads'
+import { LinearGradient } from 'expo-linear-gradient'
 
 /**
- * The four features asked for, in the order they were asked for, plus a
- * fifth for the account itself — every mobile app needs a place to sign
- * out from. Each screen this points at is real and reachable today; which
- * ones are fully built yet is tracked in PLAN.md, not hidden by leaving a
- * tab out.
+ * Two different navigation trees behind one role, per the design handoff —
+ * a rep and an admin are different jobs, not the same nav with an extra
+ * button. Which one renders follows the *signed-in user's real role*
+ * (server/src/routes/auth.js), never a client-side switch: the prototype's
+ * "Switch workspace" toggle is a demo convenience over fake data, and
+ * doing that for real here would be a genuine permission bypass — an
+ * admin viewing "as a rep" is a real feature (a preview), but it is not
+ * the same thing as a rep flipping their own nav to admin.
  *
- * The drawer and notification panel are mounted once here, above the tab
- * navigator, so they overlay whichever tab is active rather than each
- * screen owning its own copy.
+ * Search Unit and Assistant aren't in the handoff's 5-tab CRM nav at all
+ * (it doesn't know about them) — dropping them wasn't asked for, so both
+ * stay reachable as Profile rows instead, the same way the handoff itself
+ * makes admin's "Lead board" reachable from Profile even though it also
+ * has its own tab.
  */
 export default function TabsLayout() {
-  return (
-    <AppChromeProvider>
-      <TabsLayoutInner />
-    </AppChromeProvider>
-  )
-}
-
-function TabsLayoutInner() {
-  const { drawerOpen, closeDrawer, notifOpen, closeNotifications } = useAppChrome()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const { waiting } = useNotifications()
+  const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: leadApi.stats, staleTime: 30_000 })
+  const unassigned = stats?.unassigned ?? 0
 
   return (
     <View style={{ flex: 1 }}>
       <Tabs
+        initialRouteName={isAdmin ? 'overview' : 'home'}
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: COLORS.brand,
-          tabBarInactiveTintColor: COLORS.faint,
-          tabBarLabelStyle: { fontFamily: FONTS.bodyMedium, fontSize: 11 },
+          tabBarActiveTintColor: COLORS.purple600,
+          tabBarInactiveTintColor: COLORS.ink4,
+          tabBarLabelStyle: { fontFamily: FONTS.bodyBold, fontSize: 10 },
           tabBarStyle: {
-            borderTopWidth: 0, height: 88, paddingTop: 10, backgroundColor: '#fff',
-            shadowColor: COLORS.ink, shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 12,
+            height: 76, paddingTop: 10, paddingBottom: 12,
+            backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: COLORS.line,
           },
         }}
       >
         <Tabs.Screen
-          name="whatsapp"
-          options={{ title: 'WhatsApp', tabBarIcon: ({ color, size }) => <Ionicons name="logo-whatsapp" size={size} color={color} /> }}
+          name="home"
+          options={{ href: isAdmin ? null : undefined, title: 'Home', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
         />
         <Tabs.Screen
           name="leads"
-          options={{ title: 'Leads', tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} /> }}
+          options={{ href: isAdmin ? null : undefined, title: 'Leads', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-outline" /> }}
         />
         <Tabs.Screen
-          name="units"
-          options={{ title: 'Units', tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} /> }}
+          name="whatsapp"
+          options={{
+            href: isAdmin ? null : undefined, title: 'WhatsApp',
+            tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="logo-whatsapp" badge={waiting} />,
+          }}
         />
         <Tabs.Screen
-          name="assistant"
-          options={{ title: 'Assistant', tabBarIcon: ({ color, size }) => <Ionicons name="sparkles-outline" size={size} color={color} /> }}
+          name="overview"
+          options={{ href: isAdmin ? undefined : null, title: 'Overview', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
+        />
+        <Tabs.Screen
+          name="board"
+          options={{ href: isAdmin ? undefined : null, title: 'Board', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="grid-outline" /> }}
+        />
+        <Tabs.Screen
+          name="assign"
+          options={{
+            href: isAdmin ? undefined : null, title: 'Assign',
+            tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="swap-horizontal-outline" badge={unassigned} />,
+          }}
+        />
+        <Tabs.Screen
+          name="followups"
+          options={{ title: 'Follow-ups', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="time-outline" /> }}
         />
         <Tabs.Screen
           name="profile"
-          options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" size={size} color={color} /> }}
+          options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="person-circle-outline" /> }}
         />
+        {/* Not in the handoff's tab set — reachable from Profile instead. */}
+        <Tabs.Screen name="units" options={{ href: null }} />
+        <Tabs.Screen name="assistant" options={{ href: null }} />
       </Tabs>
+    </View>
+  )
+}
 
-      <AppDrawer open={drawerOpen} onClose={closeDrawer} />
-      <NotificationPanel open={notifOpen} onClose={closeNotifications} />
+/** The active tab's 26×3px gradient pill, flush above its icon — the one
+ *  piece of the handoff's nav spec React Navigation's default tab bar has
+ *  no slot for, so it's built into the icon itself. */
+function TabIcon({ focused, name, badge }: { focused: boolean; name: keyof typeof Ionicons.glyphMap; badge?: number }) {
+  return (
+    <View style={{ alignItems: 'center', width: 40 }}>
+      <View style={{ height: 3, width: 26, borderRadius: 2, overflow: 'hidden', marginBottom: 5 }}>
+        {focused && <LinearGradient colors={GRADIENT_PRIMARY} locations={GRADIENT_PRIMARY_LOCATIONS} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />}
+      </View>
+      <View>
+        <Ionicons name={name} size={22} color={focused ? COLORS.purple600 : COLORS.ink4} style={{ opacity: focused ? 1 : 0.9 }} />
+        {!!badge && badge > 0 && (
+          <View
+            style={{
+              position: 'absolute', top: -3, right: -9, minWidth: 15, height: 15, borderRadius: 8,
+              backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+              borderWidth: 1.5, borderColor: '#fff',
+            }}
+          >
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9, color: '#fff' }}>{badge > 9 ? '9+' : badge}</Text>
+          </View>
+        )}
+      </View>
     </View>
   )
 }

@@ -10,7 +10,7 @@ import { LEAD_STATUS_FLOW, statusLabel, statusTone, TEMPERATURE_LABEL } from '..
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
 import PressableScale from '../../../src/components/PressableScale'
-import AppHeader from '../../../src/components/AppHeader'
+import ScreenHeader from '../../../src/components/ScreenHeader'
 
 const FILTERS: { value: string; label: string }[] = [{ value: 'all', label: 'All' }, ...LEAD_STATUS_FLOW]
 
@@ -48,7 +48,7 @@ export default function LeadsListScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <AppHeader title="Leads" />
+      <ScreenHeader title="Leads" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
         <View
