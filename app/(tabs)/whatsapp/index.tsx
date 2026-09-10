@@ -208,8 +208,9 @@ export default function WhatsAppListScreen() {
                     )}
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {item.lastMessageMine && <Ionicons name="checkmark-done" size={14} color={COLORS.readTick} />}
                     <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.ink3, flex: 1 }}>
-                      {item.phone}
+                      {item.lastMessage}
                     </Text>
                     {!item.lead && !item.customer && (
                       <View style={{ backgroundColor: COLORS.warnTint, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>

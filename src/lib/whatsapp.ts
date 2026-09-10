@@ -74,6 +74,8 @@ export type WhatsAppConversation = {
   phone: string
   count: number
   lastAt: string
+  lastMessage: string
+  lastMessageMine: boolean
   lastInboundAt?: string | null
   lastOutboundAt?: string | null
   waitingSince?: string | null
