@@ -31,8 +31,8 @@ registration step.
 | 1 | Login & session | ✅ Done | `POST /api/auth/login`, `expo-secure-store` |
 | 2 | WhatsApp | ✅ Done | `GET/POST /api/whatsapp/*`, `GET /api/leads/:id/score` |
 | 3 | Leads (incl. AI scoring) | ✅ Done | `GET /api/leads`, `/stats`, `/:id`, `/:id/status`, `/:id/attempts`, `/:id/comments`, `/:id/convert`, `/:id/score` |
-| 4 | Search Unit | ⏳ Next | `GET /api/quotes/available-units` |
-| 5 | AI Chat Bot | ⏳ Pending | `POST /api/assistant` |
+| 4 | Search Unit | ✅ Done | `GET /api/units`, `/api/units/:id`, `GET /api/quotes/available-units` |
+| 5 | AI Chat Bot | ⏳ Next | `POST /api/assistant` |
 
 Nothing is skipped — each stub tab already names its real endpoint and this
 plan file, so the scope is locked in even before it's built.
@@ -49,8 +49,8 @@ plan file, so the scope is locked in even before it's built.
 - `app/(tabs)/_layout.tsx` — 5-tab shell: WhatsApp, Leads, Search Unit,
   Assistant, Profile
 - `app/(tabs)/profile.tsx` — real screen: shows the signed-in user, sign out
-- `app/(tabs)/units.tsx`, `assistant.tsx` — placeholder screens naming the
-  endpoint each will call
+- `app/(tabs)/assistant.tsx` — placeholder screen naming the endpoint it
+  will call
 
 ## What's built so far (Feature 2 — WhatsApp)
 
@@ -107,6 +107,27 @@ send text, send media, see the score) cover the day-to-day use case.
 (admin-only on web), the follow-up plan editor, and lead creation/import —
 none of these were asked for by name, and every write path a rep actually
 needs day-to-day (status, attempts, notes, convert) is covered.
+
+## What's built so far (Feature 4 — Search Unit)
+
+- `app/(tabs)/units.tsx` — search unit number, filter by status (Available/
+  Occupied/Reserved/Maintenance) and size (chips built from whatever sizes
+  are actually in the loaded set), and an optional date-range check
+  ("Free from ⁠— to ⁠—") that switches the data source to
+  `GET /quotes/available-units?from&to&all=true` so every unit's real
+  availability *in that window* shows, not just today's static `status`
+- `src/components/units/UnitDetailSheet.tsx` — tapping a unit opens
+  `GET /units/:id`: price, size, dimensions, discount, notes, any bookings
+  in the checked window, and recent contracts on that unit
+- `src/lib/units.ts` — types and calls ported from the `Unit` Mongoose
+  schema and the `/units` and `/quotes/available-units` routes
+
+**Left out of this pass**: the full quote-creation wizard (`POST
+/quotes`) — this feature is "search unit" as asked, i.e. checking
+availability and pricing while on a call, not building a quote from
+scratch on a phone. A rep who wants to book still finishes that on the
+web app, the same way the web app's own Units page hands off to a
+separate `/quotes/new` flow rather than building the quote inline.
 
 Verified: `npx tsc --noEmit` clean, `npx expo export --platform ios`
 bundles successfully after each feature.
