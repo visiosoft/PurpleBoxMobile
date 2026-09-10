@@ -6,9 +6,8 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { leadApi, type Lead } from '../../../src/lib/leads'
 import { apiError } from '../../../src/lib/api'
-import { LEAD_STATUS_FLOW, statusLabel, statusTone, TEMPERATURE_LABEL } from '../../../src/lib/leadStatus'
-import { COLORS, FONTS } from '../../../src/lib/theme'
-import Avatar from '../../../src/components/Avatar'
+import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
+import { COLORS, FONTS, RADII, SHADOWS, avatarStyle } from '../../../src/lib/theme'
 import PressableScale from '../../../src/components/PressableScale'
 import ScreenHeader from '../../../src/components/ScreenHeader'
 
@@ -19,6 +18,22 @@ function timeAgo(iso: string): string {
   if (days <= 0) return 'today'
   if (days === 1) return 'yesterday'
   return `${days}d ago`
+}
+
+function lastActivityOf(lead: Lead): string {
+  const t = lead.timeline
+  const latest = t && t.length ? t[t.length - 1] : null
+  if (latest) return latest.text
+  return lead.createdAt ? `Added ${timeAgo(lead.createdAt)}` : 'No activity yet'
+}
+
+function followUpLabel(lead: Lead): { text: string; overdue: boolean } {
+  if (!lead.followUpAt) return { text: 'Not scheduled', overdue: false }
+  const d = new Date(lead.followUpAt)
+  const overdue = d.getTime() < Date.now()
+  const day = d.toLocaleDateString([], { day: 'numeric', month: 'short' })
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return { text: `${day}, ${time}`, overdue }
 }
 
 export default function LeadsListScreen() {
@@ -45,76 +60,91 @@ export default function LeadsListScreen() {
   })
 
   const leads = data?.pages.flatMap((p) => p.data) ?? []
+  const total = data?.pages[0]?.total ?? stats?.total ?? 0
+
+  function openChat(lead: Lead) {
+    router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: lead.fullName, leadId: lead._id } })
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <ScreenHeader title="Leads" />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
-        <View
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
-            borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 12, height: 42,
-          }}
-        >
-          <Ionicons name="search" size={17} color={COLORS.faint} />
-          <TextInput
-            value={q}
-            onChangeText={setQ}
-            placeholder="Search leads"
-            placeholderTextColor={COLORS.faint}
-            style={{ flex: 1, fontFamily: FONTS.body, fontSize: 14, color: COLORS.ink }}
-          />
-          {q.length > 0 && (
-            <Pressable onPress={() => setQ('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={17} color={COLORS.faint} />
-            </Pressable>
-          )}
-        </View>
+    <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt }}>
+      <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line }}>
+        <SafeAreaView edges={['top']}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontFamily: FONTS.display, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink }}>Leads</Text>
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink3 }}>{total} total</Text>
+            </View>
 
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={FILTERS}
-          keyExtractor={(f) => f.value}
-          contentContainerStyle={{ gap: 8 }}
-          renderItem={({ item }) => {
-            const active = status === item.value
-            const count = item.value === 'all' ? stats?.total : stats?.byStatus?.[item.value]
-            return (
-              <PressableScale
-                onPress={() => setStatus(item.value)}
-                style={{
-                  paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: active ? COLORS.brand : '#fff', borderWidth: active ? 0 : 1, borderColor: COLORS.line,
-                  flexDirection: 'row', gap: 5,
-                }}
-              >
-                <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: active ? '#fff' : COLORS.muted }}>{item.label}</Text>
-                {count != null && (
-                  <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: active ? 'rgba(255,255,255,0.85)' : COLORS.faint }}>{count}</Text>
-                )}
-              </PressableScale>
-            )
-          }}
-        />
+            <View
+              style={{
+                marginTop: 14, height: 46, borderRadius: RADII.input, borderWidth: 1, borderColor: COLORS.line,
+                backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14,
+              }}
+            >
+              <Ionicons name="search" size={17} color={COLORS.ink4} />
+              <TextInput
+                value={q}
+                onChangeText={setQ}
+                placeholder="Search name, phone or company..."
+                placeholderTextColor={COLORS.ink4}
+                style={{ flex: 1, fontFamily: FONTS.body, fontSize: 13.5, color: COLORS.ink }}
+              />
+              {q.length > 0 && (
+                <Pressable onPress={() => setQ('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={17} color={COLORS.ink4} />
+                </Pressable>
+              )}
+            </View>
+
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={FILTERS}
+              keyExtractor={(f) => f.value}
+              contentContainerStyle={{ gap: 7, paddingVertical: 12 }}
+              renderItem={({ item }) => {
+                const active = status === item.value
+                const count = item.value === 'all' ? stats?.total : stats?.byStatus?.[item.value]
+                return (
+                  <PressableScale
+                    onPress={() => setStatus(item.value)}
+                    style={{
+                      paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: active ? COLORS.purple600 : '#fff', borderWidth: active ? 0 : 1, borderColor: COLORS.line,
+                      flexDirection: 'row', gap: 5, ...(active ? SHADOWS.purpleGlow : {}),
+                    }}
+                  >
+                    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12, color: active ? '#fff' : COLORS.ink2 }}>{item.label}</Text>
+                    {count != null && (
+                      <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 11, color: active ? 'rgba(255,255,255,0.75)' : COLORS.ink4 }}>{count}</Text>
+                    )}
+                  </PressableScale>
+                )
+              }}
+            />
+          </View>
+        </SafeAreaView>
       </View>
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={COLORS.brand} />
+          <ActivityIndicator color={COLORS.purple600} />
         </View>
       ) : isError ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 }}>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.bad, textAlign: 'center' }}>{apiError(error)}</Text>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.danger, textAlign: 'center' }}>{apiError(error)}</Text>
           <Pressable onPress={() => refetch()}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.brand }}>Try again</Text>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.purple600 }}>Try again</Text>
           </Pressable>
         </View>
       ) : leads.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Ionicons name="people-outline" size={40} color={COLORS.faint} />
-          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.muted, marginTop: 10 }}>No leads here</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+          <View style={{ width: 66, height: 66, borderRadius: 22, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="people-outline" size={30} color={COLORS.purple600} />
+          </View>
+          <Text style={{ marginTop: 18, fontFamily: FONTS.display, fontSize: 18, color: COLORS.ink }}>No leads here yet</Text>
+          <Text style={{ marginTop: 6, fontFamily: FONTS.body, fontSize: 13, color: COLORS.ink3, textAlign: 'center' }}>New leads assigned to you will appear here.</Text>
         </View>
       ) : (
         <FlatList
@@ -124,38 +154,76 @@ export default function LeadsListScreen() {
           refreshing={isFetching && !isFetchingNextPage}
           onEndReachedThreshold={0.4}
           onEndReached={() => { if (hasNextPage) fetchNextPage() }}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 16 }} color={COLORS.brand} /> : null}
-          renderItem={({ item }) => <LeadRow lead={item} onPress={() => router.push(`/leads/${item._id}`)} />}
+          contentContainerStyle={{ padding: 16, gap: 11 }}
+          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 16 }} color={COLORS.purple600} /> : null}
+          renderItem={({ item, index }) => (
+            <LeadCard
+              lead={item}
+              index={index}
+              onOpen={() => router.push(`/leads/${item._id}`)}
+              onChat={() => openChat(item)}
+            />
+          )}
         />
       )}
-      </SafeAreaView>
     </View>
   )
 }
 
-function LeadRow({ lead, onPress }: { lead: Lead; onPress: () => void }) {
-  const tone = statusTone(lead.status)
+function LeadCard({
+  lead, index, onOpen, onChat,
+}: { lead: Lead; index: number; onOpen: () => void; onChat: () => void }) {
+  const meta = statusMeta(lead.status)
+  const av = avatarStyle(index)
+  const fu = followUpLabel(lead)
   return (
-    <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12 }}>
-      <Avatar name={lead.fullName} />
-      <View style={{ flex: 1, gap: 3 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.ink, flex: 1, marginRight: 8 }}>
-            {lead.fullName}
-          </Text>
-          {!!lead.createdAt && <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.faint }}>{timeAgo(lead.createdAt)}</Text>}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <View style={{ backgroundColor: tone.bg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 10.5, color: tone.fg }}>{statusLabel(lead.status)}</Text>
+    <View style={{ borderWidth: 1, borderColor: COLORS.line, borderRadius: RADII.card, backgroundColor: '#fff', overflow: 'hidden', ...SHADOWS.card }}>
+      <View style={{ height: 3, backgroundColor: meta.dot }} />
+      <View style={{ padding: 14 }}>
+        <View style={{ flexDirection: 'row', gap: 11, alignItems: 'flex-start' }}>
+          <PressableScale onPress={onOpen} style={{ width: 44, height: 44, borderRadius: 15, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: FONTS.display, fontSize: 16, color: av.text }}>{lead.fullName.slice(0, 1).toUpperCase()}</Text>
+          </PressableScale>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <PressableScale onPress={onOpen}>
+              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15.5, color: COLORS.ink }}>{lead.fullName}</Text>
+            </PressableScale>
+            <Text style={{ marginTop: 2, fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink3, fontVariant: ['tabular-nums'] }}>{lead.phone}</Text>
           </View>
-          {!!lead.temperature && (
-            <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.muted }}>{TEMPERATURE_LABEL[lead.temperature]}</Text>
-          )}
-          <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.muted, flex: 1 }}>{lead.phone}</Text>
+          <View style={{ backgroundColor: meta.bg, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10.5, color: meta.text }}>{meta.label}</Text>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 9, marginTop: 12 }}>
+          <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.lineSoft, borderRadius: 13, padding: 10 }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Interested in</Text>
+            <Text style={{ marginTop: 3, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }} numberOfLines={1}>
+              {lead.storageSizeValue} sqft · {lead.durationValue} {lead.durationUnit}{lead.durationValue === 1 ? '' : 's'}
+            </Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.lineSoft, borderRadius: 13, padding: 10 }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Next follow-up</Text>
+            <Text style={{ marginTop: 3, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: fu.overdue ? COLORS.danger : COLORS.ink }} numberOfLines={1}>
+              {fu.text}
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+          <Ionicons name="time-outline" size={12} color={COLORS.ink4} />
+          <Text numberOfLines={1} style={{ flex: 1, fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.ink3 }}>{lastActivityOf(lead)}</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+          <PressableScale onPress={onChat} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', ...SHADOWS.whatsappGlow }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
+          </PressableScale>
+          <PressableScale onPress={onOpen} style={{ flex: 1, height: 40, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(91,43,201,0.22)', backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Follow-up</Text>
+          </PressableScale>
         </View>
       </View>
-    </PressableScale>
+    </View>
   )
 }
