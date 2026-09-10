@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth, apiError } from '../src/lib/auth'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../src/lib/theme'
@@ -57,7 +57,11 @@ export default function Login() {
               shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6,
             }}
           >
-            <Text style={{ fontFamily: FONTS.display, fontSize: 32, color: COLORS.brandDark }}>P</Text>
+            <Image
+              source={require('../assets/brand/logo-mark-icon.png')}
+              style={{ width: 48, height: 39 }}
+              resizeMode="contain"
+            />
           </View>
           <Text style={{ fontFamily: FONTS.display, fontSize: 28, color: '#fff', letterSpacing: -0.6 }}>PurpleBox</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
