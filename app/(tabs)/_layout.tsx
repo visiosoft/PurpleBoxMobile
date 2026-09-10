@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native'
-import { Tabs } from 'expo-router'
+import { Tabs, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../src/lib/theme'
@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient'
  * has its own tab.
  */
 export default function TabsLayout() {
+  const router = useRouter()
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const { waiting } = useNotifications()
@@ -52,12 +53,21 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="leads"
-          options={{ href: isAdmin ? null : undefined, title: 'Leads', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-outline" /> }}
+          options={{
+            href: isAdmin ? null : undefined, title: 'Leads',
+            tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-outline" badge={stats?.byStatus?.new ?? 0} />,
+          }}
         />
         <Tabs.Screen
           name="whatsapp"
+          listeners={{
+            tabPress: (event) => {
+              event.preventDefault()
+              router.replace('/whatsapp')
+            },
+          }}
           options={{
-            href: isAdmin ? null : undefined, title: 'WhatsApp',
+            href: isAdmin ? null : '/whatsapp', title: 'WhatsApp',
             tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="logo-whatsapp" badge={waiting} />,
           }}
         />
