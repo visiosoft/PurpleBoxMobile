@@ -9,7 +9,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ae.purplebox.mobile"
+      "bundleIdentifier": "ae.purplebox.mobile",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "package": "ae.purplebox.mobile",
@@ -43,6 +46,12 @@
         {
           "photosPermission": "PurpleBox needs access to your photos to attach them to WhatsApp messages.",
           "cameraPermission": "PurpleBox needs access to your camera to take photos or video for WhatsApp messages."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#5B2BC9"
         }
       ]
     ],
