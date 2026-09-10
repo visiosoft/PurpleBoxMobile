@@ -56,13 +56,22 @@ export default function ChatThreadScreen() {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const recorderState = useAudioRecorderState(recorder, 200)
 
-  const { data: messages = [], isLoading } = useQuery({
+  // The server will hand back up to 2000 messages for a thread if asked —
+  // fine for a one-time web page load, but this screen refetches on every
+  // 3s poll, so a busy conversation's entire history was going over the
+  // wire again and again just to keep the chat open. Starting small and
+  // growing only when a rep actually scrolls up for history keeps both the
+  // initial open and every poll after it cheap.
+  const [messageLimit, setMessageLimit] = useState(60)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const { data: messages = [], isLoading, isFetching: messagesFetching } = useQuery({
     queryKey: ['wa-messages', phone],
-    queryFn: () => whatsappApi.messages(phone),
+    queryFn: () => whatsappApi.messages(phone, messageLimit),
     enabled: !!phone,
     refetchInterval: 3_000,
     refetchIntervalInBackground: true,
   })
+  useEffect(() => { if (!messagesFetching) setLoadingMore(false) }, [messagesFetching])
 
   const { data: lead } = useQuery({
     queryKey: ['lead', leadId],
@@ -111,6 +120,13 @@ export default function ChatThreadScreen() {
   })
 
   const sending = sendText.isPending || sendMedia.isPending
+  const hasMoreHistory = messages.length >= messageLimit
+
+  function loadMoreHistory() {
+    if (!hasMoreHistory || loadingMore) return
+    setLoadingMore(true)
+    setMessageLimit((n) => n + 60)
+  }
 
   function handleSend() {
     if (sending) return
@@ -252,6 +268,16 @@ export default function ChatThreadScreen() {
             inverted
             contentContainerStyle={{ padding: 12, gap: 8 }}
             renderItem={({ item }) => <MessageBubble msg={item} />}
+            // Inverted flips "end" to mean the far side of the data array —
+            // data[last] is the oldest message and renders at the visual
+            // top, so reaching it is exactly "scrolled up for history".
+            onEndReached={loadMoreHistory}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              loadingMore ? (
+                <ActivityIndicator style={{ paddingVertical: 12 }} color={COLORS.brand} />
+              ) : null
+            }
           />
         )}
 

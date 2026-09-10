@@ -121,8 +121,13 @@ export const whatsappApi = {
           pinned: r.data.pinned ?? null,
         }
       }),
-  messages: (phone?: string) =>
-    api.get<WhatsAppMsg[]>('/whatsapp/messages', { params: phone ? { phone } : {} }).then((r) => r.data),
+  /** Server default for a single thread is up to 2000 messages — fine for
+   *  the web console's one-time load, but this app refetches on every poll,
+   *  so a busy thread's whole history was going over the wire every 3s just
+   *  to open a chat. `limit` lets the screen ask for a small recent window
+   *  first and grow it only if the rep actually scrolls up for history. */
+  messages: (phone?: string, limit?: number) =>
+    api.get<WhatsAppMsg[]>('/whatsapp/messages', { params: { ...(phone ? { phone } : {}), ...(limit ? { limit } : {}) } }).then((r) => r.data),
   send: (to: string, body: string) => api.post<{ ok: boolean }>('/whatsapp/send', { to, body }).then((r) => r.data),
   /** `uri` is a local file:// picked from the camera roll or camera. */
   sendMedia: (
