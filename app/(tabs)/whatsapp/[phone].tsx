@@ -43,7 +43,7 @@ export default function ChatThreadScreen() {
     queryKey: ['wa-messages', phone],
     queryFn: () => whatsappApi.messages(phone),
     enabled: !!phone,
-    refetchInterval: 5_000,
+    refetchInterval: 3_000,
     refetchIntervalInBackground: true,
   })
 

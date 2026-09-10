@@ -69,7 +69,7 @@ export default function WhatsAppListScreen() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['wa-conversations', serverOwner, debouncedQ],
     queryFn: () => whatsappApi.conversations({ owner: serverOwner, q: debouncedQ || undefined, limit: 200 }),
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: true,
   })
 
