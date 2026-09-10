@@ -21,6 +21,7 @@ const OUTCOME_LABEL: Record<AttemptOutcome, string> = {
 const CHANNEL_LABEL: Record<AttemptChannel, string> = {
   call: 'Call', whatsapp: 'WhatsApp', voice_note: 'Voice note', email: 'Email', sms: 'SMS', walk_in: 'Walk-in', other: 'Other',
 }
+const LOST_REASONS = ['Price too high', 'Customer not interested', 'Competitor', 'No response', 'Wrong enquiry', 'Other'] as const
 const TIMELINE_ICON: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; chip: string }> = {
   created: { icon: 'person-add-outline', color: COLORS.purple600, chip: COLORS.purple50 },
   updated: { icon: 'create-outline', color: COLORS.ink3, chip: COLORS.surfaceAlt },
@@ -44,6 +45,7 @@ export default function LeadDetailScreen() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [statusPickerOpen, setStatusPickerOpen] = useState(false)
+  const [lostPickerOpen, setLostPickerOpen] = useState(false)
   const [scoreOpen, setScoreOpen] = useState(false)
   const [channel, setChannel] = useState<AttemptChannel>('call')
   const [attemptNote, setAttemptNote] = useState('')
@@ -59,6 +61,12 @@ export default function LeadDetailScreen() {
 
   const changeStatus = useMutation({
     mutationFn: (status: LeadStatus) => leadApi.updateStatus(id, status),
+    onSuccess: invalidate,
+    onError: (e) => Alert.alert('Could not update status', apiError(e)),
+  })
+
+  const markLost = useMutation({
+    mutationFn: (reason: string) => leadApi.updateStatus(id, 'lost', reason),
     onSuccess: invalidate,
     onError: (e) => Alert.alert('Could not update status', apiError(e)),
   })
@@ -287,15 +295,18 @@ export default function LeadDetailScreen() {
 
           <View style={{ flexDirection: 'row', gap: 9, marginTop: 6 }}>
             <PressableScale
-              onPress={() => changeStatus.mutate('won')}
+              onPress={() => Alert.alert('Mark as Won', `Mark ${lead.fullName} as won?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Mark as Won', onPress: () => changeStatus.mutate('won') },
+              ])}
               disabled={changeStatus.isPending}
               style={{ flex: 1, height: 48, borderRadius: 15, backgroundColor: COLORS.successTint, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: COLORS.success }}>Mark as Won</Text>
             </PressableScale>
             <PressableScale
-              onPress={() => changeStatus.mutate('lost')}
-              disabled={changeStatus.isPending}
+              onPress={() => setLostPickerOpen(true)}
+              disabled={markLost.isPending}
               style={{ flex: 1, height: 48, borderRadius: 15, borderWidth: 1, borderColor: COLORS.line, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: COLORS.ink3 }}>Mark as Lost</Text>
@@ -322,6 +333,13 @@ export default function LeadDetailScreen() {
         selected={lead.status}
         onSelect={(s) => changeStatus.mutate(s)}
         onClose={() => setStatusPickerOpen(false)}
+      />
+      <PickerSheet
+        visible={lostPickerOpen}
+        title="Why was this lead lost?"
+        options={LOST_REASONS.map((r) => ({ value: r, label: r }))}
+        onSelect={(reason) => markLost.mutate(reason)}
+        onClose={() => setLostPickerOpen(false)}
       />
       <ScoreSheet leadId={lead._id} leadName={lead.fullName} visible={scoreOpen} onClose={() => setScoreOpen(false)} />
     </>
