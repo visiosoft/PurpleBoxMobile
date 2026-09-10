@@ -8,7 +8,10 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { whatsappApi, type WhatsAppMsg } from '../../../src/lib/whatsapp'
+import {
+  useAudioRecorder, useAudioRecorderState, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync,
+} from 'expo-audio'
+import { whatsappApi, messageTemplateApi, type WhatsAppMsg, type MessageTemplate } from '../../../src/lib/whatsapp'
 import { leadApi, type LeadStatus } from '../../../src/lib/leads'
 import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
@@ -19,12 +22,20 @@ import Attachment from '../../../src/components/whatsapp/Attachment'
 import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
 import PickerSheet from '../../../src/components/PickerSheet'
 import FollowUpSheet from '../../../src/components/FollowUpSheet'
+import QuickRepliesSheet from '../../../src/components/whatsapp/QuickRepliesSheet'
 import PressableScale from '../../../src/components/PressableScale'
 
-type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' }
+type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' | 'audio' }
 
 function bubbleTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatRecordingTime(ms: number): string {
+  const total = Math.floor(ms / 1000)
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 export default function ChatThreadScreen() {
@@ -38,6 +49,12 @@ export default function ChatThreadScreen() {
   const [scoreOpen, setScoreOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
+
+  // .m4a/AAC — the same container the server's send-media route already
+  // accepts as-is (only a browser's WebM recording needs remuxing there).
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+  const recorderState = useAudioRecorderState(recorder, 200)
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['wa-messages', phone],
@@ -87,6 +104,12 @@ export default function ChatThreadScreen() {
     onError: (e) => { setUploadPct(null); setSendErr(apiError(e)) },
   })
 
+  const sendQuickReply = useMutation({
+    mutationFn: (templateId: string) => whatsappApi.sendQuickReply(phone, templateId),
+    onSuccess: invalidate,
+    onError: (e) => setSendErr(apiError(e)),
+  })
+
   const sending = sendText.isPending || sendMedia.isPending
 
   function handleSend() {
@@ -98,6 +121,22 @@ export default function ChatThreadScreen() {
     const body = draft.trim()
     if (!body) return
     sendText.mutate(body)
+  }
+
+  async function startRecording() {
+    const perm = await requestRecordingPermissionsAsync()
+    if (!perm.granted) { notify('Microphone access needed', 'Allow microphone access to record a voice message.'); return }
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
+    await recorder.prepareToRecordAsync()
+    recorder.record()
+  }
+
+  async function stopRecording(send: boolean) {
+    await recorder.stop()
+    const uri = recorder.uri
+    if (send && uri) {
+      setPendingMedia({ uri, name: `voice-${Date.now()}.m4a`, mimeType: 'audio/m4a', kind: 'audio' })
+    }
   }
 
   async function launchPicker(source: 'library' | 'camera') {
@@ -193,7 +232,7 @@ export default function ChatThreadScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: '#F6F0E4' }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
         {isLoading ? (
@@ -202,7 +241,13 @@ export default function ChatThreadScreen() {
           </View>
         ) : (
           <FlatList
-            data={[...messages].reverse()}
+            // The server already returns newest-first (occurredAt: -1), which
+            // is exactly what an inverted list wants — data[0] renders at the
+            // bottom (what you see on open), data[last] at the top (oldest,
+            // reached by scrolling up). Reversing it here was flipping that:
+            // the customer's first message rendered at the bottom instead of
+            // the top.
+            data={messages}
             keyExtractor={(m) => m._id}
             inverted
             contentContainerStyle={{ padding: 12, gap: 8 }}
@@ -220,11 +265,13 @@ export default function ChatThreadScreen() {
               <Image source={{ uri: pendingMedia.uri }} style={{ width: 48, height: 48, borderRadius: 8 }} />
             ) : (
               <View style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: 'rgba(20,8,31,0.08)', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="videocam" size={20} color={COLORS.brandDark} />
+                <Ionicons name={pendingMedia.kind === 'audio' ? 'mic' : 'videocam'} size={20} color={COLORS.brandDark} />
               </View>
             )}
             <Text style={{ flex: 1, fontFamily: FONTS.body, fontSize: 12, color: COLORS.muted }}>
-              {uploadPct != null ? `Uploading… ${uploadPct}%` : 'Ready to send — add a caption or send as-is'}
+              {uploadPct != null
+                ? `Uploading… ${uploadPct}%`
+                : pendingMedia.kind === 'audio' ? 'Voice message ready to send' : 'Ready to send — add a caption or send as-is'}
             </Text>
             {uploadPct == null && (
               <Pressable onPress={() => setPendingMedia(null)} hitSlop={8}>
@@ -234,6 +281,28 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
+        {recorderState.isRecording ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }}>
+            <PressableScale
+              onPress={() => stopRecording(false)}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="trash-outline" size={19} color={COLORS.bad} />
+            </PressableScale>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 16 }}>
+              <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: COLORS.bad }} />
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13.5, color: COLORS.ink, fontVariant: ['tabular-nums'] }}>
+                {formatRecordingTime(recorderState.durationMillis)}
+              </Text>
+            </View>
+            <PressableScale
+              onPress={() => stopRecording(true)}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="checkmark" size={20} color="#fff" />
+            </PressableScale>
+          </View>
+        ) : (
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12 }}>
           <PressableScale
             onPress={pickMedia}
@@ -242,6 +311,15 @@ export default function ChatThreadScreen() {
           >
             <Ionicons name="add" size={22} color={COLORS.brand} />
           </PressableScale>
+          {!!leadId && (
+            <PressableScale
+              onPress={() => setQuickRepliesOpen(true)}
+              disabled={sending}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="flash-outline" size={20} color={COLORS.brand} />
+            </PressableScale>
+          )}
           <TextInput
             value={draft}
             onChangeText={setDraft}
@@ -253,6 +331,15 @@ export default function ChatThreadScreen() {
               paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
             }}
           />
+          {!draft.trim() && !pendingMedia ? (
+            <PressableScale
+              onPress={startRecording}
+              disabled={sending}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="mic" size={19} color="#fff" />
+            </PressableScale>
+          ) : (
           <PressableScale
             onPress={handleSend}
             disabled={sending || (!draft.trim() && !pendingMedia)}
@@ -263,7 +350,9 @@ export default function ChatThreadScreen() {
           >
             {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={17} color="#fff" />}
           </PressableScale>
+          )}
         </View>
+        )}
       </KeyboardAvoidingView>
 
       {!!leadId && (
@@ -282,6 +371,11 @@ export default function ChatThreadScreen() {
             current={lead?.followUpAt}
             onSchedule={(iso) => { scheduleFollowUp.mutate(iso); setFollowUpOpen(false) }}
             onClose={() => setFollowUpOpen(false)}
+          />
+          <QuickRepliesSheet
+            visible={quickRepliesOpen}
+            onSelect={(t: MessageTemplate) => sendQuickReply.mutate(t._id)}
+            onClose={() => setQuickRepliesOpen(false)}
           />
         </>
       )}

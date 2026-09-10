@@ -142,6 +142,28 @@ export const whatsappApi = {
       })
       .then((r) => r.data)
   },
+  /** `templateId` is a MessageTemplate _id — the server resolves its body
+   *  (or its location/media, for a location or video quick reply) and sends
+   *  it, exactly like the web console's send-quick-reply button. */
+  sendQuickReply: (to: string, templateId: string) =>
+    api.post('/whatsapp/send-quick-reply', { to, templateId }).then((r) => r.data),
+}
+
+/** Settings → Message Templates, reused as the quick-reply library — same
+ *  shape the web console reads (client/src/pages/WhatsApp.tsx). */
+export type MessageTemplate = {
+  _id: string
+  key: string
+  label: string
+  whatsappBody: string
+  category?: string
+  sortOrder?: number
+  mediaKind?: '' | 'image' | 'video' | 'audio' | 'document' | 'location'
+}
+
+export const messageTemplateApi = {
+  quickReplies: () =>
+    api.get<MessageTemplate[]>('/message-templates', { params: { kind: 'quick_reply' } }).then((r) => r.data ?? []),
 }
 
 export type LeadScoreBand = 'high' | 'medium' | 'low'
