@@ -90,7 +90,7 @@ export default function FollowUpsTab() {
                   key={t.key}
                   onPress={() => setTab(t.key)}
                   style={{
-                    flex: 1, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6,
+                    flex: 1, height: 36, paddingHorizontal: 10, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6,
                     backgroundColor: active ? '#fff' : 'transparent', ...(active ? { shadowColor: COLORS.ink, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2 } : {}),
                   }}
                 >
