@@ -146,7 +146,7 @@ function FollowUpCard({
   const meta = statusMeta(f.status)
   return (
     <View style={{ flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: COLORS.line, borderRadius: 20, backgroundColor: '#fff', padding: 14 }}>
-      <View style={{ width: 52, height: 52, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: overdue ? COLORS.dangerTint : COLORS.purple50 }}>
+      <View style={{ minWidth: 52, minHeight: 52, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: overdue ? COLORS.dangerTint : COLORS.purple50 }}>
         <Text style={{ fontFamily: FONTS.display, fontSize: 15, lineHeight: 16, color: overdue ? COLORS.danger : COLORS.purple600, textAlign: 'center' }}>{hh}</Text>
         <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, marginTop: 2, letterSpacing: 0.5, color: overdue ? COLORS.danger : COLORS.purple600 }}>{mer}</Text>
       </View>
