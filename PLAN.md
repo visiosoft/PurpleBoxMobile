@@ -30,8 +30,8 @@ registration step.
 |---|---------|--------|--------|
 | 1 | Login & session | ✅ Done | `POST /api/auth/login`, `expo-secure-store` |
 | 2 | WhatsApp | ✅ Done | `GET/POST /api/whatsapp/*`, `GET /api/leads/:id/score` |
-| 3 | Leads (incl. AI scoring) | ⏳ Next | `GET /api/leads`, `GET /api/leads/:id/score`, `GET /api/leads/high-intent` |
-| 4 | Search Unit | ⏳ Pending | `GET /api/quotes/available-units` |
+| 3 | Leads (incl. AI scoring) | ✅ Done | `GET /api/leads`, `/stats`, `/:id`, `/:id/status`, `/:id/attempts`, `/:id/comments`, `/:id/convert`, `/:id/score` |
+| 4 | Search Unit | ⏳ Next | `GET /api/quotes/available-units` |
 | 5 | AI Chat Bot | ⏳ Pending | `POST /api/assistant` |
 
 Nothing is skipped — each stub tab already names its real endpoint and this
@@ -49,8 +49,8 @@ plan file, so the scope is locked in even before it's built.
 - `app/(tabs)/_layout.tsx` — 5-tab shell: WhatsApp, Leads, Search Unit,
   Assistant, Profile
 - `app/(tabs)/profile.tsx` — real screen: shows the signed-in user, sign out
-- `app/(tabs)/leads.tsx`, `units.tsx`, `assistant.tsx` — placeholder screens
-  naming the endpoint each will call
+- `app/(tabs)/units.tsx`, `assistant.tsx` — placeholder screens naming the
+  endpoint each will call
 
 ## What's built so far (Feature 2 — WhatsApp)
 
@@ -80,6 +80,33 @@ approved-template sends, quick replies, label management, assigning an
 unowned chat to a rep, and voice-note recording. These can be added later
 if needed; they weren't asked for by name and the four core actions (read,
 send text, send media, see the score) cover the day-to-day use case.
+
+## What's built so far (Feature 3 — Leads)
+
+- `app/(tabs)/leads/index.tsx` — list: status filter chips with live counts
+  from `GET /leads/stats`, search (debounced, server-side), infinite scroll
+  (`GET /leads` is paginated 25 at a time) — server already scopes a sales
+  rep to their own leads and an admin to everyone's, so nothing extra is
+  filtered client-side
+- `app/(tabs)/leads/[id].tsx` — detail: quick actions (Call, WhatsApp —
+  opens the same chat thread from Feature 2, Email, Score — reuses
+  `ScoreSheet` from Feature 2), a status changer (same pipeline/labels/
+  colors as the web app's `LEAD_STATUS_FLOW`), attempt logging (channel +
+  optional note + outcome, `POST /:id/attempts`), a merged notes/timeline
+  feed with the ability to add a note (`POST /:id/comments`), and "Convert
+  to customer" (`POST /:id/convert`)
+- `src/lib/leads.ts` — types and API calls ported field-for-field from
+  `client/src/lib/api.ts`'s `Lead`/`LeadQuery`/`LeadPage`/`leadApi` and the
+  attempt/outcome enums in `server/src/models/index.js`
+- `src/lib/leadStatus.ts` — the same status pipeline, labels, and colors as
+  the web app's `LEAD_STATUS_FLOW` / `leadStatusTone`
+- `src/components/PickerSheet.tsx` — a reusable native-style action sheet
+  (status picker here; general-purpose for later features)
+
+**Left out of this pass**: bulk actions, reassigning a lead's owner
+(admin-only on web), the follow-up plan editor, and lead creation/import —
+none of these were asked for by name, and every write path a rep actually
+needs day-to-day (status, attempts, notes, convert) is covered.
 
 Verified: `npx tsc --noEmit` clean, `npx expo export --platform ios`
 bundles successfully after each feature.
