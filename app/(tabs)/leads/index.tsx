@@ -111,7 +111,7 @@ export default function LeadsListScreen() {
                     onPress={() => setStatus(item.value)}
                     style={{
                       paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: active ? COLORS.purple600 : '#fff', borderWidth: active ? 0 : 1, borderColor: COLORS.line,
+                      backgroundColor: active ? COLORS.purple600 : COLORS.surfaceAlt, borderWidth: active ? 0 : 1, borderColor: active ? undefined : COLORS.chevron,
                       flexDirection: 'row', gap: 5, ...(active ? SHADOWS.purpleGlow : {}),
                     }}
                   >
@@ -216,10 +216,10 @@ function LeadCard({
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <PressableScale onPress={onChat} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', ...SHADOWS.whatsappGlow }}>
+          <PressableScale onPress={onChat} style={{ flex: 1, height: 40, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', ...SHADOWS.whatsappGlow }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
           </PressableScale>
-          <PressableScale onPress={onOpen} style={{ flex: 1, height: 40, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}>
+          <PressableScale onPress={onOpen} style={{ flex: 1, height: 40, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Follow-up</Text>
           </PressableScale>
         </View>

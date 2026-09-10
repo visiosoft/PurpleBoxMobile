@@ -136,7 +136,7 @@ export default function WhatsAppListScreen() {
                 onPress={() => setTab(item.key)}
                 style={{
                   paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: active ? COLORS.purple600 : '#fff', borderWidth: active ? 0 : 1, borderColor: COLORS.line,
+                  backgroundColor: active ? COLORS.purple600 : COLORS.surfaceAlt, borderWidth: active ? 0 : 1, borderColor: active ? undefined : COLORS.chevron,
                   flexDirection: 'row', gap: 5, ...(active ? SHADOWS.purpleGlow : {}),
                 }}
               >

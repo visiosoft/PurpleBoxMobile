@@ -182,7 +182,7 @@ export default function HomeTab() {
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                     <PressableScale
                       onPress={() => openChat(lead.phoneNormalized, lead.fullName, lead._id)}
-                      style={{ flex: 1, height: 42, borderRadius: 13, backgroundColor: COLORS.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, ...SHADOWS.whatsappGlow }}
+                      style={{ flex: 1, height: 42, paddingHorizontal: 12, borderRadius: 13, backgroundColor: COLORS.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, ...SHADOWS.whatsappGlow }}
                     >
                       <Ionicons name="logo-whatsapp" size={15} color="#fff" />
                       <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: '#fff' }}>Reply on WhatsApp</Text>
@@ -218,13 +218,13 @@ export default function HomeTab() {
                   <Text style={{ fontFamily: FONTS.display, fontSize: 15, letterSpacing: -0.3, color: COLORS.purple600 }}>{formatTime(f.followUpAt)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                  <PressableScale onPress={() => openChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: COLORS.successTintSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <PressableScale onPress={() => openChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 40, paddingHorizontal: 8, borderRadius: 12, backgroundColor: COLORS.successTintSoft, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.success }}>WhatsApp</Text>
                   </PressableScale>
-                  <PressableScale onPress={() => call(f.phone)} style={{ flex: 1, height: 40, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
+                  <PressableScale onPress={() => call(f.phone)} style={{ flex: 1, height: 40, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Call</Text>
                   </PressableScale>
-                  <PressableScale onPress={() => openLead(f._id)} style={{ flex: 1, height: 40, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
+                  <PressableScale onPress={() => openLead(f._id)} style={{ flex: 1, height: 40, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Reschedule</Text>
                   </PressableScale>
                 </View>

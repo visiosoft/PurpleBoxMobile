@@ -298,14 +298,14 @@ export default function LeadDetailScreen() {
             <PressableScale
               onPress={() => confirmAction('Mark as Won', `Mark ${lead.fullName} as won?`, 'Mark as Won', () => changeStatus.mutate('won'))}
               disabled={changeStatus.isPending}
-              style={{ flex: 1, height: 48, borderRadius: 15, backgroundColor: COLORS.successTint, alignItems: 'center', justifyContent: 'center' }}
+              style={{ flex: 1, height: 48, paddingHorizontal: 12, borderRadius: 15, backgroundColor: COLORS.successTint, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: COLORS.success }}>Mark as Won</Text>
             </PressableScale>
             <PressableScale
               onPress={() => setLostPickerOpen(true)}
               disabled={markLost.isPending}
-              style={{ flex: 1, height: 48, borderRadius: 15, borderWidth: 1.5, borderColor: COLORS.chevron, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
+              style={{ flex: 1, height: 48, paddingHorizontal: 12, borderRadius: 15, borderWidth: 1.5, borderColor: COLORS.chevron, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: COLORS.ink3 }}>Mark as Lost</Text>
             </PressableScale>

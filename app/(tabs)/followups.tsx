@@ -164,7 +164,7 @@ function FollowUpCard({
         <Text style={{ marginTop: 4, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink2 }}>{meta.label}</Text>
         <Text style={{ marginTop: 5, fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.ink4 }}>{dayLabel(f.followUpAt)}</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 11 }}>
-          <PressableScale onPress={() => onChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 38, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center' }}>
+          <PressableScale onPress={() => onChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 38, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
           </PressableScale>
           <PressableScale onPress={() => onCall(f.phone)} style={{ paddingHorizontal: 14, height: 38, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
