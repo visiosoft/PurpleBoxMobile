@@ -27,7 +27,12 @@ const TABS: { key: InboxTab; label: string }[] = [
 ]
 
 function displayName(c: WhatsAppConversation): string {
-  return c.lead?.fullName || c.customer?.fullName || c.phone
+  // The server already resolves this (customer name, then lead name minus
+  // the auto-generated placeholder, then their WhatsApp profile name, then
+  // the number) — using lead.fullName directly here instead was showing
+  // "WhatsApp Contact 5521" for any lead nobody has named yet, the exact
+  // case displayName exists to filter out.
+  return c.displayName || c.lead?.fullName || c.customer?.fullName || c.phone
 }
 
 function timeAgo(iso: string): string {

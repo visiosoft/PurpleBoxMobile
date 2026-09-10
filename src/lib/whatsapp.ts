@@ -76,6 +76,11 @@ export type WhatsAppConversation = {
   lastAt: string
   lastMessage: string
   lastMessageMine: boolean
+  /** The name to show, already resolved server-side: a person here decided
+   *  on it first, then their own WhatsApp profile name, then the number —
+   *  never the auto-generated "WhatsApp Contact ####" placeholder a lead
+   *  gets at birth. Same field the web console reads. */
+  displayName: string
   lastInboundAt?: string | null
   lastOutboundAt?: string | null
   waitingSince?: string | null
