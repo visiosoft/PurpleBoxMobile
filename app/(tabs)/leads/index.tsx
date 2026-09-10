@@ -10,6 +10,7 @@ import { LEAD_STATUS_FLOW, statusLabel, statusTone, TEMPERATURE_LABEL } from '..
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
 import PressableScale from '../../../src/components/PressableScale'
+import AppHeader from '../../../src/components/AppHeader'
 
 const FILTERS: { value: string; label: string }[] = [{ value: 'all', label: 'All' }, ...LEAD_STATUS_FLOW]
 
@@ -46,10 +47,10 @@ export default function LeadsListScreen() {
   const leads = data?.pages.flatMap((p) => p.data) ?? []
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>Leads</Text>
-
+    <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+      <AppHeader title="Leads" />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
         <View
           style={{
             flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
@@ -128,7 +129,8 @@ export default function LeadsListScreen() {
           renderItem={({ item }) => <LeadRow lead={item} onPress={() => router.push(`/leads/${item._id}`)} />}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }
 

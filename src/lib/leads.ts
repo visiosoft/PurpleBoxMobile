@@ -92,9 +92,22 @@ export type LeadStats = {
   byOwner: { _id: string; name: string; count: number }[]
 }
 
+export type FollowUpLeadRow = {
+  _id: string
+  fullName: string
+  phone: string
+  status: LeadStatus
+  followUpAt: string | null
+  owner?: { _id: string; name: string } | null
+}
+export type FollowUps = { overdue: FollowUpLeadRow[]; today: FollowUpLeadRow[]; upcoming: FollowUpLeadRow[]; days: number }
+
 export const leadApi = {
   list: (params: LeadQuery) => api.get<LeadPage>('/leads', { params }).then((r) => r.data),
   stats: () => api.get<LeadStats>('/leads/stats').then((r) => r.data),
+  /** Own leads only, per the server's own role scoping — what the
+   *  notification bell counts against. */
+  followUps: () => api.get<FollowUps>('/leads/follow-ups').then((r) => r.data),
   get: (id: string) => api.get<Lead>(`/leads/${id}`).then((r) => r.data),
   updateStatus: (id: string, status: LeadStatus, comment?: string) =>
     api.patch<Lead>(`/leads/${id}/status`, { status, comment }).then((r) => r.data),

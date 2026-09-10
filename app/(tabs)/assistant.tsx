@@ -13,6 +13,7 @@ import {
 import { apiError, API_BASE_URL } from '../../src/lib/api'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
+import AppHeader from '../../src/components/AppHeader'
 
 type ChatMsg = {
   id: string
@@ -95,29 +96,33 @@ export default function AssistantScreen() {
 
   if (capsLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={COLORS.brand} />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+        <AppHeader title="Assistant" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={COLORS.brand} />
+        </View>
+      </View>
     )
   }
 
   if (caps && !(caps.enabled && caps.allowed)) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <Ionicons name="sparkles-outline" size={40} color={COLORS.faint} />
-        <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.muted, marginTop: 14, textAlign: 'center' }}>
-          {caps.enabled ? "Your role doesn't have access to Ask the system." : "Ask the system isn't turned on for this account."}
-        </Text>
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+        <AppHeader title="Assistant" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Ionicons name="sparkles-outline" size={40} color={COLORS.faint} />
+          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.muted, marginTop: 14, textAlign: 'center' }}>
+            {caps.enabled ? "Your role doesn't have access to Ask the system." : "Ask the system isn't turned on for this account."}
+          </Text>
+        </View>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>Assistant</Text>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+      <AppHeader title="Assistant" />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {messages.length === 0 ? (
           <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'flex-end', gap: 10, paddingBottom: 16 }}>
@@ -174,7 +179,8 @@ export default function AssistantScreen() {
           </PressableScale>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }
 

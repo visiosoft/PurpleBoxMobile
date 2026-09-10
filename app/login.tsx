@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth, apiError } from '../src/lib/auth'
-import { COLORS, FONTS } from '../src/lib/theme'
+import { COLORS, FONTS, HERO_GRADIENT } from '../src/lib/theme'
 import PressableScale from '../src/components/PressableScale'
 
 /**
@@ -37,35 +38,36 @@ export default function Login() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1"
-      style={{ backgroundColor: COLORS.paper }}
+      style={{ flex: 1, backgroundColor: COLORS.paper }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View className="px-7 py-10">
-          {/* Wordmark — the same brand, the same name, on a phone. */}
-          <View className="items-center mb-10">
-            <View
-              className="w-16 h-16 rounded-[20px] items-center justify-center mb-4"
-              style={{ backgroundColor: COLORS.brand }}
-            >
-              <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: '#fff' }}>P</Text>
-            </View>
-            <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>
-              PurpleBox
-            </Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.muted, marginTop: 4 }}>
-              Sign in to your account
-            </Text>
-          </View>
-
-          {/* Card */}
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        {/* Hero — the one place the brand gets to fill the screen, so the
+            app announces itself before it asks for anything. */}
+        <LinearGradient
+          colors={HERO_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ alignItems: 'center', paddingTop: 76, paddingBottom: 60, borderBottomLeftRadius: 36, borderBottomRightRadius: 36 }}
+        >
           <View
-            className="rounded-3xl px-5 py-6"
-            style={{ backgroundColor: '#fff', shadowColor: COLORS.ink, shadowOpacity: 0.06, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 2 }}
+            style={{
+              width: 76, height: 76, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+              shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6,
+            }}
+          >
+            <Text style={{ fontFamily: FONTS.display, fontSize: 32, color: COLORS.brandDark }}>P</Text>
+          </View>
+          <Text style={{ fontFamily: FONTS.display, fontSize: 28, color: '#fff', letterSpacing: -0.6 }}>PurpleBox</Text>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
+            Sign in to your account
+          </Text>
+        </LinearGradient>
+
+        <View style={{ paddingHorizontal: 20, marginTop: -30, paddingBottom: 30, flex: 1 }}>
+          {/* Card floats up over the hero's curved edge. */}
+          <View
+            style={{ backgroundColor: '#fff', borderRadius: 26, padding: 22, shadowColor: COLORS.ink, shadowOpacity: 0.1, shadowRadius: 26, shadowOffset: { width: 0, height: 14 }, elevation: 5 }}
           >
             <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.muted, marginBottom: 6 }}>Email</Text>
             <TextInput
@@ -77,16 +79,15 @@ export default function Login() {
               autoComplete="email"
               keyboardType="email-address"
               editable={!submitting}
-              className="rounded-2xl px-4 mb-4"
               style={{
-                height: 50, borderWidth: 1, borderColor: COLORS.line, fontFamily: FONTS.body, fontSize: 15.5, color: COLORS.ink,
+                height: 50, borderRadius: 16, paddingHorizontal: 16, marginBottom: 14,
+                backgroundColor: COLORS.paper, fontFamily: FONTS.body, fontSize: 15.5, color: COLORS.ink,
               }}
             />
 
             <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.muted, marginBottom: 6 }}>Password</Text>
             <View
-              className="flex-row items-center rounded-2xl mb-2"
-              style={{ height: 50, borderWidth: 1, borderColor: COLORS.line }}
+              style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, marginBottom: 4, backgroundColor: COLORS.paper }}
             >
               <TextInput
                 value={password}
@@ -98,8 +99,7 @@ export default function Login() {
                 autoComplete="password"
                 editable={!submitting}
                 onSubmitEditing={onSubmit}
-                className="flex-1 px-4"
-                style={{ fontFamily: FONTS.body, fontSize: 15.5, color: COLORS.ink }}
+                style={{ flex: 1, height: 50, paddingHorizontal: 16, fontFamily: FONTS.body, fontSize: 15.5, color: COLORS.ink }}
               />
               <PressableScale onPress={() => setShowPassword((v) => !v)} style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.brand }}>
@@ -109,7 +109,7 @@ export default function Login() {
             </View>
 
             {error ? (
-              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.bad, marginTop: 6 }}>{error}</Text>
+              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.bad, marginTop: 10 }}>{error}</Text>
             ) : null}
 
             <PressableScale
@@ -118,6 +118,7 @@ export default function Login() {
               style={{
                 height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 20,
                 backgroundColor: COLORS.brand, opacity: submitting ? 0.7 : 1,
+                shadowColor: COLORS.brandDark, shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 3,
               }}
             >
               {submitting ? (
@@ -128,7 +129,7 @@ export default function Login() {
             </PressableScale>
           </View>
 
-          <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.faint, textAlign: 'center', marginTop: 20 }}>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.faint, textAlign: 'center', marginTop: 22 }}>
             Same account as office.purplebox.ae
           </Text>
         </View>

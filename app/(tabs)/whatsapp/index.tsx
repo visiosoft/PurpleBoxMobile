@@ -10,6 +10,7 @@ import { getSeenMap, isUnread, markSeen } from '../../../src/lib/seen'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
 import PressableScale from '../../../src/components/PressableScale'
+import AppHeader from '../../../src/components/AppHeader'
 
 const TABS: { key: OwnerTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -76,10 +77,10 @@ export default function WhatsAppListScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>WhatsApp</Text>
-
+    <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+      <AppHeader title="WhatsApp" />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
         <View
           style={{
             flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
@@ -194,6 +195,7 @@ export default function WhatsAppListScreen() {
           }}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }

@@ -10,6 +10,7 @@ import { COLORS, FONTS } from '../../src/lib/theme'
 import { STATUS_STYLE, statusLabel } from '../../src/components/units/statusStyle'
 import UnitDetailSheet from '../../src/components/units/UnitDetailSheet'
 import PressableScale from '../../src/components/PressableScale'
+import AppHeader from '../../src/components/AppHeader'
 
 const STATUS_FILTERS: { value: UnitStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -58,10 +59,10 @@ export default function UnitsScreen() {
   }, [rawUnits, status, size, search])
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>Search Unit</Text>
-
+    <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+      <AppHeader title="Search Unit" />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
         <View
           style={{
             flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
@@ -190,7 +191,8 @@ export default function UnitsScreen() {
       )}
 
       <UnitDetailSheet unitId={selectedUnitId} visible={!!selectedUnitId} onClose={() => setSelectedUnitId(null)} />
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }
 

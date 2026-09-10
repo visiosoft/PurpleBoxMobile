@@ -1,8 +1,11 @@
 import { View, Text, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../src/lib/auth'
-import { COLORS, FONTS } from '../../src/lib/theme'
+import { COLORS, FONTS, HERO_GRADIENT } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
+import AppHeader from '../../src/components/AppHeader'
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin',
@@ -27,39 +30,50 @@ export default function ProfileTab() {
   }
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: COLORS.paper }}>
-      <View className="px-6 pt-4">
-        <Text style={{ fontFamily: FONTS.display, fontSize: 24, color: COLORS.ink, marginBottom: 20 }}>Profile</Text>
+    <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
+      <AppHeader title="Profile" />
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          <LinearGradient
+            colors={HERO_GRADIENT}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 24, padding: 22, marginBottom: 20, shadowColor: COLORS.brandDark, shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 6 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' }}>
+                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 22, color: '#fff' }}>
+                  {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: FONTS.display, fontSize: 19, color: '#fff', letterSpacing: -0.3 }} numberOfLines={1}>{user?.name || 'Unknown'}</Text>
+                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 }} numberOfLines={1}>{user?.email}</Text>
+                <View style={{ alignSelf: 'flex-start', marginTop: 8, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                  <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: '#fff' }}>
+                    {ROLE_LABEL[user?.role ?? ''] || user?.role}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
 
-        <View
-          className="rounded-3xl p-5 mb-5"
-          style={{ backgroundColor: '#fff', shadowColor: COLORS.ink, shadowOpacity: 0.05, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 1 }}
-        >
-          <View className="flex-row items-center gap-3">
-            <View className="w-14 h-14 rounded-full items-center justify-center" style={{ backgroundColor: COLORS.brand }}>
-              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 20, color: '#fff' }}>
-                {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
-              </Text>
-            </View>
-            <View className="flex-1 ml-1">
-              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 16, color: COLORS.ink }}>{user?.name || 'Unknown'}</Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.muted }}>{user?.email}</Text>
-            </View>
-            <View className="rounded-full px-3 py-1" style={{ backgroundColor: COLORS.brandTint }}>
-              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11.5, color: COLORS.brandDark }}>
-                {ROLE_LABEL[user?.role ?? ''] || user?.role}
-              </Text>
-            </View>
-          </View>
+          <PressableScale
+            onPress={confirmLogout}
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              height: 52, borderRadius: 16, borderWidth: 1, borderColor: COLORS.badBg, backgroundColor: '#fff',
+            }}
+          >
+            <Ionicons name="log-out-outline" size={18} color={COLORS.bad} />
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.bad }}>Sign out</Text>
+          </PressableScale>
+
+          <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.faint, textAlign: 'center', marginTop: 24 }}>
+            PurpleBox · Same account as office.purplebox.ae
+          </Text>
         </View>
-
-        <PressableScale
-          onPress={confirmLogout}
-          style={{ height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.badBg, backgroundColor: '#fff' }}
-        >
-          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.bad }}>Sign out</Text>
-        </PressableScale>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }
