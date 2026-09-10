@@ -4,20 +4,26 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
-import { whatsappApi, type WhatsAppConversation, type OwnerTab } from '../../../src/lib/whatsapp'
+import { whatsappApi, type WhatsAppConversation } from '../../../src/lib/whatsapp'
 import { apiError } from '../../../src/lib/api'
 import { getSeenMap, isUnread, markSeen } from '../../../src/lib/seen'
 import { statusMeta } from '../../../src/lib/leadStatus'
 import { COLORS, FONTS, RADII, SHADOWS, avatarStyle } from '../../../src/lib/theme'
 import PressableScale from '../../../src/components/PressableScale'
 
-const TABS: { key: OwnerTab; label: string }[] = [
+/**
+ * The handoff's 3 inbox tabs — All / Waiting on me / Replied — replacing
+ * the richer 6-way owner split (mine/tenants/unassigned/quiet) this screen
+ * had before. "Waiting on me" maps straight onto the server's own
+ * `owner=waiting` filter; "Replied" has no server equivalent, so it's the
+ * complement computed client-side from `waitingSince`, same as the
+ * prototype's own `mine:!waiting` logic.
+ */
+type InboxTab = 'all' | 'waiting' | 'replied'
+const TABS: { key: InboxTab; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: 'mine', label: 'Mine' },
-  { key: 'waiting', label: 'Waiting' },
-  { key: 'tenants', label: 'Tenants' },
-  { key: 'unassigned', label: 'Unassigned' },
-  { key: 'quiet', label: 'Quiet' },
+  { key: 'waiting', label: 'Waiting on me' },
+  { key: 'replied', label: 'Replied' },
 ]
 
 function displayName(c: WhatsAppConversation): string {
@@ -43,7 +49,7 @@ function waitedFor(since: string): { text: string; bg: string; fg: string } {
 
 export default function WhatsAppListScreen() {
   const router = useRouter()
-  const [owner, setOwner] = useState<OwnerTab>('all')
+  const [tab, setTab] = useState<InboxTab>('all')
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [seenMap, setSeenMap] = useState<Record<string, string>>({})
@@ -57,15 +63,22 @@ export default function WhatsAppListScreen() {
     getSeenMap().then(setSeenMap)
   }, [])
 
+  // "Replied" has no server-side owner filter, so it fetches the same full
+  // list as "All" and filters client-side — see the TABS comment above.
+  const serverOwner = tab === 'waiting' ? 'waiting' : 'all'
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['wa-conversations', owner, debouncedQ],
-    queryFn: () => whatsappApi.conversations({ owner, q: debouncedQ || undefined, limit: 200 }),
+    queryKey: ['wa-conversations', serverOwner, debouncedQ],
+    queryFn: () => whatsappApi.conversations({ owner: serverOwner, q: debouncedQ || undefined, limit: 200 }),
     refetchInterval: 10_000,
     refetchIntervalInBackground: true,
   })
 
-  const conversations = data?.list ?? []
+  const conversations = useMemo(
+    () => (tab === 'replied' ? (data?.list ?? []).filter((c) => !c.waitingSince) : data?.list ?? []),
+    [data, tab],
+  )
   const counts = data?.ownerCounts
+  const tabCount = (key: InboxTab) => (key === 'replied' ? (counts ? counts.all - counts.waiting : undefined) : counts?.[key])
 
   const openChat = (c: WhatsAppConversation) => {
     markSeen(c.phoneNormalized, c.lastAt).then(() => setSeenMap((m) => ({ ...m, [c.phoneNormalized]: c.lastAt })))
@@ -116,11 +129,11 @@ export default function WhatsAppListScreen() {
           keyExtractor={(t) => t.key}
           contentContainerStyle={{ gap: 7 }}
           renderItem={({ item }) => {
-            const active = owner === item.key
-            const count = counts?.[item.key]
+            const active = tab === item.key
+            const count = tabCount(item.key)
             return (
               <PressableScale
-                onPress={() => setOwner(item.key)}
+                onPress={() => setTab(item.key)}
                 style={{
                   paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
                   backgroundColor: active ? COLORS.purple600 : '#fff', borderWidth: active ? 0 : 1, borderColor: COLORS.line,
