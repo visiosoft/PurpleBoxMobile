@@ -157,7 +157,7 @@ export default function LeadDetailScreen() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 16 }}>
           <PressableScale
             onPress={() => router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: lead.fullName, leadId: lead._id } })}
-            style={{ height: 52, borderRadius: 17, backgroundColor: COLORS.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, ...SHADOWS.whatsappGlow }}
+            style={{ height: 52, paddingHorizontal: 16, borderRadius: 17, backgroundColor: COLORS.whatsapp, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, ...SHADOWS.whatsappGlow }}
           >
             <Ionicons name="logo-whatsapp" size={19} color="#fff" />
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: '#fff' }}>Open WhatsApp</Text>
@@ -343,7 +343,7 @@ export default function LeadDetailScreen() {
 
 function ActionButton({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
   return (
-    <PressableScale onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 5, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12, borderWidth: 1, borderColor: COLORS.line }}>
+    <PressableScale onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 5, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1.5, borderColor: COLORS.chevron }}>
       <Ionicons name={icon} size={19} color={COLORS.purple600} />
       <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11.5, color: COLORS.ink2 }}>{label}</Text>
     </PressableScale>

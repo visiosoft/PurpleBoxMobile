@@ -97,7 +97,7 @@ export default function UnitsScreen() {
                 onPress={() => setStatus(item.value)}
                 style={{
                   paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: active ? COLORS.brand : '#fff', borderWidth: active ? 0 : 1, borderColor: COLORS.line,
+                  backgroundColor: active ? COLORS.brand : '#fff', borderWidth: 1.5, borderColor: active ? COLORS.brand : COLORS.chevron,
                 }}
               >
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: active ? '#fff' : COLORS.muted }}>{item.label}</Text>
