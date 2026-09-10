@@ -1,7 +1,8 @@
-import { View, Text, Pressable, Alert } from 'react-native'
+import { View, Text, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '../../src/lib/auth'
 import { COLORS, FONTS } from '../../src/lib/theme'
+import PressableScale from '../../src/components/PressableScale'
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin',
@@ -52,13 +53,12 @@ export default function ProfileTab() {
           </View>
         </View>
 
-        <Pressable
+        <PressableScale
           onPress={confirmLogout}
-          className="rounded-2xl items-center justify-center"
-          style={{ height: 50, borderWidth: 1, borderColor: COLORS.badBg, backgroundColor: '#fff' }}
+          style={{ height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.badBg, backgroundColor: '#fff' }}
         >
           <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.bad }}>Sign out</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </SafeAreaView>
   )

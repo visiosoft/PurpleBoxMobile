@@ -13,6 +13,7 @@ import { markSeen } from '../../../src/lib/seen'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Attachment from '../../../src/components/whatsapp/Attachment'
 import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
+import PressableScale from '../../../src/components/PressableScale'
 
 type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' }
 
@@ -108,10 +109,10 @@ export default function ChatThreadScreen() {
           title: name || phone,
           headerRight: leadId
             ? () => (
-              <Pressable onPress={() => setScoreOpen(true)} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <PressableScale onPress={() => setScoreOpen(true)} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons name="sparkles" size={18} color={COLORS.brand} />
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.brand }}>Score</Text>
-              </Pressable>
+              </PressableScale>
             )
             : undefined,
         }}
@@ -161,13 +162,13 @@ export default function ChatThreadScreen() {
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12 }}>
-          <Pressable
+          <PressableScale
             onPress={pickMedia}
             disabled={sending}
             style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
           >
             <Ionicons name="add" size={22} color={COLORS.brand} />
-          </Pressable>
+          </PressableScale>
           <TextInput
             value={draft}
             onChangeText={setDraft}
@@ -179,7 +180,7 @@ export default function ChatThreadScreen() {
               paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
             }}
           />
-          <Pressable
+          <PressableScale
             onPress={handleSend}
             disabled={sending || (!draft.trim() && !pendingMedia)}
             style={{
@@ -188,7 +189,7 @@ export default function ChatThreadScreen() {
             }}
           >
             {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={17} color="#fff" />}
-          </Pressable>
+          </PressableScale>
         </View>
       </KeyboardAvoidingView>
 

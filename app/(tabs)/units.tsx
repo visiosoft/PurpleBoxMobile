@@ -9,6 +9,7 @@ import { apiError } from '../../src/lib/api'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import { STATUS_STYLE, statusLabel } from '../../src/components/units/statusStyle'
 import UnitDetailSheet from '../../src/components/units/UnitDetailSheet'
+import PressableScale from '../../src/components/PressableScale'
 
 const STATUS_FILTERS: { value: UnitStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -59,7 +60,7 @@ export default function UnitsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink }}>Search Unit</Text>
+        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>Search Unit</Text>
 
         <View
           style={{
@@ -91,7 +92,7 @@ export default function UnitsScreen() {
           renderItem={({ item }) => {
             const active = status === item.value
             return (
-              <Pressable
+              <PressableScale
                 onPress={() => setStatus(item.value)}
                 style={{
                   paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
@@ -99,7 +100,7 @@ export default function UnitsScreen() {
                 }}
               >
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: active ? '#fff' : COLORS.muted }}>{item.label}</Text>
-              </Pressable>
+              </PressableScale>
             )
           }}
         />
@@ -114,7 +115,7 @@ export default function UnitsScreen() {
             renderItem={({ item }) => {
               const active = size === item.value
               return (
-                <Pressable
+                <PressableScale
                   onPress={() => setSize(item.value)}
                   style={{
                     paddingHorizontal: 12, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
@@ -122,7 +123,7 @@ export default function UnitsScreen() {
                   }}
                 >
                   <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: active ? COLORS.brandDark : COLORS.muted }}>{item.label}</Text>
-                </Pressable>
+                </PressableScale>
               )
             }}
           />
@@ -131,13 +132,13 @@ export default function UnitsScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Ionicons name="calendar-outline" size={16} color={COLORS.muted} />
           <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.muted }}>Free from</Text>
-          <Pressable onPress={() => setPickerFor('from')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
+          <PressableScale onPress={() => setPickerFor('from')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
             <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink }}>{displayDate(fromDate)}</Text>
-          </Pressable>
+          </PressableScale>
           <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.muted }}>to</Text>
-          <Pressable onPress={() => setPickerFor('to')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
+          <PressableScale onPress={() => setPickerFor('to')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
             <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink }}>{displayDate(toDate)}</Text>
-          </Pressable>
+          </PressableScale>
           {datesSet && (
             <Pressable onPress={() => { setFromDate(null); setToDate(null) }} hitSlop={8}>
               <Ionicons name="close-circle" size={16} color={COLORS.faint} />
@@ -197,7 +198,7 @@ function UnitCard({ unit, datesSet, onPress }: { unit: Unit; datesSet: boolean; 
   const tone = STATUS_STYLE[unit.status]
   const periodTone = unit.bookedInPeriod ? { bg: COLORS.badBg, fg: COLORS.bad, label: 'Booked in window' } : { bg: COLORS.goodBg, fg: COLORS.good, label: 'Free in window' }
   return (
-    <Pressable onPress={onPress} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <PressableScale onPress={onPress} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: COLORS.brandTint, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.brandDark }}>{unit.floor || '—'}</Text>
       </View>
@@ -219,6 +220,6 @@ function UnitCard({ unit, datesSet, onPress }: { unit: Unit; datesSet: boolean; 
         </View>
       </View>
       <Ionicons name="chevron-forward" size={18} color={COLORS.faint} />
-    </Pressable>
+    </PressableScale>
   )
 }

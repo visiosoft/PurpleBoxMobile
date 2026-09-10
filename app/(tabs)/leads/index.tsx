@@ -9,6 +9,7 @@ import { apiError } from '../../../src/lib/api'
 import { LEAD_STATUS_FLOW, statusLabel, statusTone, TEMPERATURE_LABEL } from '../../../src/lib/leadStatus'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
+import PressableScale from '../../../src/components/PressableScale'
 
 const FILTERS: { value: string; label: string }[] = [{ value: 'all', label: 'All' }, ...LEAD_STATUS_FLOW]
 
@@ -47,7 +48,7 @@ export default function LeadsListScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink }}>Leads</Text>
+        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>Leads</Text>
 
         <View
           style={{
@@ -80,7 +81,7 @@ export default function LeadsListScreen() {
             const active = status === item.value
             const count = item.value === 'all' ? stats?.total : stats?.byStatus?.[item.value]
             return (
-              <Pressable
+              <PressableScale
                 onPress={() => setStatus(item.value)}
                 style={{
                   paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
@@ -92,7 +93,7 @@ export default function LeadsListScreen() {
                 {count != null && (
                   <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: active ? 'rgba(255,255,255,0.85)' : COLORS.faint }}>{count}</Text>
                 )}
-              </Pressable>
+              </PressableScale>
             )
           }}
         />
@@ -134,7 +135,7 @@ export default function LeadsListScreen() {
 function LeadRow({ lead, onPress }: { lead: Lead; onPress: () => void }) {
   const tone = statusTone(lead.status)
   return (
-    <Pressable onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12 }}>
+    <PressableScale onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12 }}>
       <Avatar name={lead.fullName} />
       <View style={{ flex: 1, gap: 3 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -153,6 +154,6 @@ function LeadRow({ lead, onPress }: { lead: Lead; onPress: () => void }) {
           <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.muted, flex: 1 }}>{lead.phone}</Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   )
 }

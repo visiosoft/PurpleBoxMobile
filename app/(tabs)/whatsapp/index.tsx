@@ -9,6 +9,7 @@ import { apiError } from '../../../src/lib/api'
 import { getSeenMap, isUnread, markSeen } from '../../../src/lib/seen'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
+import PressableScale from '../../../src/components/PressableScale'
 
 const TABS: { key: OwnerTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -77,7 +78,7 @@ export default function WhatsAppListScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink }}>WhatsApp</Text>
+        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>WhatsApp</Text>
 
         <View
           style={{
@@ -110,7 +111,7 @@ export default function WhatsAppListScreen() {
             const active = owner === item.key
             const count = counts?.[item.key]
             return (
-              <Pressable
+              <PressableScale
                 onPress={() => setOwner(item.key)}
                 style={{
                   paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
@@ -122,7 +123,7 @@ export default function WhatsAppListScreen() {
                 {count != null && (
                   <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: active ? 'rgba(255,255,255,0.85)' : COLORS.faint }}>{count}</Text>
                 )}
-              </Pressable>
+              </PressableScale>
             )
           }}
         />
@@ -156,7 +157,7 @@ export default function WhatsAppListScreen() {
             const unread = isUnread(seenMap, item.phoneNormalized, item.lastAt)
             const waiting = item.waitingSince ? waitedFor(item.waitingSince) : null
             return (
-              <Pressable
+              <PressableScale
                 onPress={() => openChat(item)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12 }}
               >
@@ -188,7 +189,7 @@ export default function WhatsAppListScreen() {
                     {unread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.brand }} />}
                   </View>
                 </View>
-              </Pressable>
+              </PressableScale>
             )
           }}
         />

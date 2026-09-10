@@ -12,6 +12,7 @@ import {
 } from '../../src/lib/assistant'
 import { apiError, API_BASE_URL } from '../../src/lib/api'
 import { COLORS, FONTS } from '../../src/lib/theme'
+import PressableScale from '../../src/components/PressableScale'
 
 type ChatMsg = {
   id: string
@@ -114,7 +115,7 @@ export default function AssistantScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.paper }} edges={['top']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink }}>Assistant</Text>
+        <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, letterSpacing: -0.5 }}>Assistant</Text>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
@@ -128,9 +129,9 @@ export default function AssistantScreen() {
               <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.muted, textAlign: 'center', marginTop: 4 }}>Plain language — it reads the real data.</Text>
             </View>
             {EXAMPLE_PROMPTS.map((p) => (
-              <Pressable key={p} onPress={() => send(p)} style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, padding: 14 }}>
+              <PressableScale key={p} onPress={() => send(p)} style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, padding: 14 }}>
                 <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: COLORS.ink }}>{p}</Text>
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
         ) : (
@@ -164,13 +165,13 @@ export default function AssistantScreen() {
               paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
             }}
           />
-          <Pressable
+          <PressableScale
             onPress={() => send(draft)}
             disabled={ask.isPending || !draft.trim()}
             style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: ask.isPending || !draft.trim() ? COLORS.faint : COLORS.brand }}
           >
             <Ionicons name="send" size={17} color="#fff" />
-          </Pressable>
+          </PressableScale>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -219,20 +220,20 @@ function ChatBubble({
               <Text key={i} style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.ink }}>• {line}</Text>
             ))}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
-              <Pressable
+              <PressableScale
                 disabled={busy}
                 onPress={() => onConfirm(msg.pending!.id)}
                 style={{ flex: 1, backgroundColor: COLORS.brand, borderRadius: 10, paddingVertical: 9, alignItems: 'center' }}
               >
                 <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>Confirm</Text>
-              </Pressable>
-              <Pressable
+              </PressableScale>
+              <PressableScale
                 disabled={busy}
                 onPress={() => onCancel(msg.pending!.id)}
                 style={{ flex: 1, backgroundColor: '#fff', borderRadius: 10, paddingVertical: 9, alignItems: 'center' }}
               >
                 <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.muted }}>Cancel</Text>
-              </Pressable>
+              </PressableScale>
             </View>
           </View>
         )}

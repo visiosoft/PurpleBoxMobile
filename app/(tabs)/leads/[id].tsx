@@ -11,6 +11,7 @@ import { apiError } from '../../../src/lib/api'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Avatar from '../../../src/components/Avatar'
 import PickerSheet from '../../../src/components/PickerSheet'
+import PressableScale from '../../../src/components/PressableScale'
 import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
 
 const OUTCOME_LABEL: Record<AttemptOutcome, string> = {
@@ -125,7 +126,7 @@ export default function LeadDetailScreen() {
         </Section>
 
         <Section title="STATUS">
-          <Pressable
+          <PressableScale
             onPress={() => setStatusPickerOpen(true)}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}
           >
@@ -133,13 +134,13 @@ export default function LeadDetailScreen() {
               <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: tone.fg }}>{statusLabel(lead.status)}</Text>
             </View>
             <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.brand }}>Change</Text>
-          </Pressable>
+          </PressableScale>
         </Section>
 
         <Section title="LOG AN ATTEMPT">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {(Object.keys(CHANNEL_LABEL) as AttemptChannel[]).map((c) => (
-              <Pressable
+              <PressableScale
                 key={c}
                 onPress={() => setChannel(c)}
                 style={{
@@ -148,7 +149,7 @@ export default function LeadDetailScreen() {
                 }}
               >
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: channel === c ? '#fff' : COLORS.muted }}>{CHANNEL_LABEL[c]}</Text>
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
           <TextInput
@@ -163,14 +164,14 @@ export default function LeadDetailScreen() {
           />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {(Object.keys(OUTCOME_LABEL) as AttemptOutcome[]).map((o) => (
-              <Pressable
+              <PressableScale
                 key={o}
                 disabled={logAttempt.isPending}
                 onPress={() => logAttempt.mutate(o)}
                 style={{ paddingHorizontal: 12, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: COLORS.line }}
               >
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }}>{OUTCOME_LABEL[o]}</Text>
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
           {logAttempt.isPending && <ActivityIndicator style={{ marginTop: 10 }} color={COLORS.brand} />}
@@ -197,13 +198,13 @@ export default function LeadDetailScreen() {
                 paddingHorizontal: 12, paddingVertical: 9, fontFamily: FONTS.body, fontSize: 13, color: COLORS.ink,
               }}
             />
-            <Pressable
+            <PressableScale
               onPress={() => comment.trim() && addComment.mutate(comment.trim())}
               disabled={addComment.isPending || !comment.trim()}
               style={{ width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: comment.trim() ? COLORS.brand : COLORS.faint }}
             >
               {addComment.isPending ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="send" size={16} color="#fff" />}
-            </Pressable>
+            </PressableScale>
           </View>
           {timelineFeed.length === 0 ? (
             <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.faint }}>Nothing logged yet.</Text>
@@ -220,7 +221,7 @@ export default function LeadDetailScreen() {
           )}
         </Section>
 
-        <Pressable
+        <PressableScale
           onPress={() => Alert.alert('Convert to customer', `Create a customer record for ${lead.fullName}?`, [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Convert', onPress: () => convert.mutate() },
@@ -229,7 +230,7 @@ export default function LeadDetailScreen() {
           style={{ backgroundColor: COLORS.brand, borderRadius: 14, paddingVertical: 14, alignItems: 'center' }}
         >
           {convert.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: '#fff' }}>Convert to customer</Text>}
-        </Pressable>
+        </PressableScale>
       </ScrollView>
 
       <PickerSheet
@@ -247,10 +248,10 @@ export default function LeadDetailScreen() {
 
 function ActionButton({ icon, label, onPress, accent }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; accent?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 5, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12 }}>
+    <PressableScale onPress={onPress} style={{ flex: 1, alignItems: 'center', gap: 5, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12 }}>
       <Ionicons name={icon} size={20} color={accent ? COLORS.brand : COLORS.brandDark} />
       <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 11.5, color: COLORS.ink }}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   )
 }
 

@@ -1,6 +1,7 @@
 import { Modal, View, Text, Pressable, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { COLORS, FONTS } from '../lib/theme'
+import PressableScale from './PressableScale'
 
 /** A native-feeling action sheet for picking one of a short list of options
  *  — status, attempt outcome, attempt channel. Used instead of Alert.alert
@@ -28,7 +29,7 @@ export default function PickerSheet<T extends string>({
           <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink, paddingHorizontal: 20, paddingBottom: 6 }}>{title}</Text>
           <ScrollView>
             {options.map((opt) => (
-              <Pressable
+              <PressableScale
                 key={opt.value}
                 onPress={() => { onSelect(opt.value); onClose() }}
                 style={{
@@ -38,7 +39,7 @@ export default function PickerSheet<T extends string>({
               >
                 <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: COLORS.ink }}>{opt.label}</Text>
                 {selected === opt.value && <Ionicons name="checkmark" size={18} color={COLORS.brand} />}
-              </Pressable>
+              </PressableScale>
             ))}
           </ScrollView>
         </Pressable>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useAuth, apiError } from '../src/lib/auth'
 import { COLORS, FONTS } from '../src/lib/theme'
+import PressableScale from '../src/components/PressableScale'
 
 /**
  * The same account as the web app — same email, same password, same
@@ -100,29 +101,31 @@ export default function Login() {
                 className="flex-1 px-4"
                 style={{ fontFamily: FONTS.body, fontSize: 15.5, color: COLORS.ink }}
               />
-              <Pressable onPress={() => setShowPassword((v) => !v)} className="px-4 py-3">
+              <PressableScale onPress={() => setShowPassword((v) => !v)} style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
                 <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.brand }}>
                   {showPassword ? 'Hide' : 'Show'}
                 </Text>
-              </Pressable>
+              </PressableScale>
             </View>
 
             {error ? (
               <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.bad, marginTop: 6 }}>{error}</Text>
             ) : null}
 
-            <Pressable
+            <PressableScale
               onPress={onSubmit}
               disabled={submitting}
-              className="rounded-2xl items-center justify-center mt-5"
-              style={{ height: 52, backgroundColor: COLORS.brand, opacity: submitting ? 0.7 : 1 }}
+              style={{
+                height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 20,
+                backgroundColor: COLORS.brand, opacity: submitting ? 0.7 : 1,
+              }}
             >
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15.5, color: '#fff' }}>Sign in</Text>
               )}
-            </Pressable>
+            </PressableScale>
           </View>
 
           <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.faint, textAlign: 'center', marginTop: 20 }}>

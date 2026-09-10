@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { leadScoreApi, type LeadScoreBand } from '../../lib/whatsapp'
 import { apiError } from '../../lib/api'
 import { COLORS, FONTS } from '../../lib/theme'
+import PressableScale from '../PressableScale'
 
 const BAND_STYLE: Record<LeadScoreBand, { bg: string; fg: string; label: string }> = {
   high: { bg: COLORS.goodBg, fg: COLORS.good, label: 'High intent' },
@@ -92,13 +93,13 @@ export default function ScoreSheet({
 
               <View style={{ gap: 8 }}>
                 <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 11, color: COLORS.muted, letterSpacing: 0.4 }}>WHEN DO THEY NEED IT?</Text>
-                <Pressable
+                <PressableScale
                   onPress={() => setShowPicker(true)}
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, padding: 12 }}
                 >
                   <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.ink }}>{score.signals.intendedStartDate || 'Not set'}</Text>
                   <Ionicons name="calendar-outline" size={18} color={COLORS.muted} />
-                </Pressable>
+                </PressableScale>
                 {!!score.signals.intendedStartDate && (
                   <Pressable onPress={() => setDate.mutate('')}>
                     <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.bad }}>Clear date</Text>
@@ -119,20 +120,20 @@ export default function ScoreSheet({
                   </View>
                 ) : (
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <Pressable
+                    <PressableScale
                       onPress={() => confirm.mutate('qualifying')}
                       disabled={confirm.isPending}
                       style={{ flex: 1, backgroundColor: COLORS.goodBg, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
                     >
                       <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.good }}>✅ Qualifying</Text>
-                    </Pressable>
-                    <Pressable
+                    </PressableScale>
+                    <PressableScale
                       onPress={() => confirm.mutate('not_interested')}
                       disabled={confirm.isPending}
                       style={{ flex: 1, backgroundColor: '#F3F4F6', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
                     >
                       <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.muted }}>❌ Not interested</Text>
-                    </Pressable>
+                    </PressableScale>
                   </View>
                 )}
               </View>
