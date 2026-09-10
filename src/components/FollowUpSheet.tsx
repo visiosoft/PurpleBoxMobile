@@ -22,8 +22,8 @@ const PRESETS: { key: string; label: string }[] = [
 ]
 
 export default function FollowUpSheet({
-  visible, current, onSchedule, onClose,
-}: { visible: boolean; current?: string | null; onSchedule: (iso: string) => void; onClose: () => void }) {
+  visible, current, onSchedule, onClose, title = 'Schedule follow-up',
+}: { visible: boolean; current?: string | null; onSchedule: (iso: string) => void; onClose: () => void; title?: string }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,8,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
@@ -31,7 +31,7 @@ export default function FollowUpSheet({
           <View style={{ alignItems: 'center', paddingVertical: 10 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.line }} />
           </View>
-          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink, paddingHorizontal: 20, paddingBottom: 4 }}>Schedule follow-up</Text>
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink, paddingHorizontal: 20, paddingBottom: 4 }}>{title}</Text>
           {!!current && (
             <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.ink3, paddingHorizontal: 20, paddingBottom: 10 }}>
               Currently {new Date(current).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}

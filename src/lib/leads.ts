@@ -122,6 +122,13 @@ export const leadApi = {
    *  patch like this never needs to resend the rest of the record. */
   scheduleFollowUp: (id: string, followUpAt: string | null) =>
     api.put<Lead>(`/leads/${id}`, { followUpAt }).then((r) => r.data),
+  scheduleSiteVisit: (id: string, siteVisitAt: string | null) =>
+    api.put<Lead>(`/leads/${id}`, { siteVisitAt }).then((r) => r.data),
+  /** How much storage they need, and for how long — set right from the
+   *  WhatsApp chat while it's actually being discussed, instead of only
+   *  from the lead's own detail screen. */
+  updateUnitSize: (id: string, body: { storageSizeValue: number; durationValue: number; durationUnit: 'week' | 'month' }) =>
+    api.put<Lead>(`/leads/${id}`, body).then((r) => r.data),
   addAttempt: (id: string, body: { outcome: AttemptOutcome; channel?: AttemptChannel; note?: string }) =>
     api
       .post<{ attempt: LeadAttempt; exhausted: boolean; suggestStatus: LeadStatus | null; sequence: number; followUpAt: string | null }>(

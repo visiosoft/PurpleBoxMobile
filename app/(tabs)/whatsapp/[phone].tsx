@@ -23,6 +23,8 @@ import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
 import PickerSheet from '../../../src/components/PickerSheet'
 import FollowUpSheet from '../../../src/components/FollowUpSheet'
 import QuickRepliesSheet from '../../../src/components/whatsapp/QuickRepliesSheet'
+import UnitSizeSheet from '../../../src/components/UnitSizeSheet'
+import ContactedNoteSheet from '../../../src/components/ContactedNoteSheet'
 import PressableScale from '../../../src/components/PressableScale'
 
 type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' | 'audio' }
@@ -50,6 +52,9 @@ export default function ChatThreadScreen() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
+  const [unitSizeOpen, setUnitSizeOpen] = useState(false)
+  const [contactedNoteOpen, setContactedNoteOpen] = useState(false)
+  const [siteVisitOpen, setSiteVisitOpen] = useState(false)
   // A pushed screen stays mounted under whatever's on top of it — switch to
   // another bottom tab, or back to the thread list, and this poll would
   // otherwise keep firing for a chat nobody is looking at.
@@ -84,7 +89,7 @@ export default function ChatThreadScreen() {
   })
   const invalidateLead = () => queryClient.invalidateQueries({ queryKey: ['lead', leadId] })
   const changeStatus = useMutation({
-    mutationFn: (status: LeadStatus) => leadApi.updateStatus(leadId!, status),
+    mutationFn: ({ status, comment }: { status: LeadStatus; comment?: string }) => leadApi.updateStatus(leadId!, status, comment),
     onSuccess: invalidateLead,
     onError: (e) => notify('Could not update status', apiError(e)),
   })
@@ -93,6 +98,28 @@ export default function ChatThreadScreen() {
     onSuccess: invalidateLead,
     onError: (e) => notify('Could not schedule follow-up', apiError(e)),
   })
+  const scheduleSiteVisit = useMutation({
+    mutationFn: (iso: string) => leadApi.scheduleSiteVisit(leadId!, iso),
+    onSuccess: invalidateLead,
+    onError: (e) => notify('Could not schedule site visit', apiError(e)),
+  })
+  const updateUnitSize = useMutation({
+    mutationFn: (body: { storageSizeValue: number; durationValue: number; durationUnit: 'week' | 'month' }) =>
+      leadApi.updateUnitSize(leadId!, body),
+    onSuccess: () => { setUnitSizeOpen(false); invalidateLead() },
+    onError: (e) => notify('Could not save', apiError(e)),
+  })
+
+  // "Contacted" is the one status where what was actually said matters —
+  // captured while the call is still fresh via ContactedNoteSheet, folded
+  // into the very same status-change request the server already supports
+  // (PATCH /leads/:id/status accepts an optional comment), rather than a
+  // second, easy-to-skip step.
+  function finishContacted(note: string, thenScheduleVisit: boolean) {
+    changeStatus.mutate({ status: 'contacted', comment: note || undefined })
+    setContactedNoteOpen(false)
+    if (thenScheduleVisit) setSiteVisitOpen(true)
+  }
 
   useEffect(() => {
     if (!phone || messages.length === 0) return
@@ -224,28 +251,43 @@ export default function ChatThreadScreen() {
       </View>
 
       {!!leadId && lead && meta && (
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingHorizontal: 12, paddingVertical: 9 }}>
+        <View style={{ gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingHorizontal: 12, paddingVertical: 9 }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <PressableScale
+              onPress={() => setStatusOpen(true)}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+            >
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.dot }} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Status</Text>
+                <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.ink }}>{meta.label}</Text>
+              </View>
+            </PressableScale>
+            <PressableScale
+              onPress={() => setFollowUpOpen(true)}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(91,43,201,0.2)', backgroundColor: COLORS.purple50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+            >
+              <Ionicons name="calendar-outline" size={15} color={COLORS.purple600} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.purple400 }}>Follow-up</Text>
+                <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>
+                  {lead.followUpAt ? new Date(lead.followUpAt).toLocaleDateString([], { day: 'numeric', month: 'short' }) : 'Set date'}
+                </Text>
+              </View>
+            </PressableScale>
+          </View>
           <PressableScale
-            onPress={() => setStatusOpen(true)}
-            style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+            onPress={() => setUnitSizeOpen(true)}
+            style={{ height: 38, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
           >
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.dot }} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Status</Text>
-              <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.ink }}>{meta.label}</Text>
-            </View>
-          </PressableScale>
-          <PressableScale
-            onPress={() => setFollowUpOpen(true)}
-            style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(91,43,201,0.2)', backgroundColor: COLORS.purple50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
-          >
-            <Ionicons name="calendar-outline" size={15} color={COLORS.purple600} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.purple400 }}>Follow-up</Text>
-              <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>
-                {lead.followUpAt ? new Date(lead.followUpAt).toLocaleDateString([], { day: 'numeric', month: 'short' }) : 'Set date'}
-              </Text>
-            </View>
+            <Ionicons name="cube-outline" size={15} color={COLORS.ink3} />
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Unit</Text>
+            <Text numberOfLines={1} style={{ flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }}>
+              {lead.storageSizeValue > 0
+                ? `${lead.storageSizeValue} sqft · ${lead.durationValue} ${lead.durationUnit}${lead.durationValue === 1 ? '' : 's'}`
+                : 'Not set — tap to add'}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.faint} />
           </PressableScale>
         </View>
       )}
@@ -393,7 +435,12 @@ export default function ChatThreadScreen() {
             title="Change status"
             options={LEAD_STATUS_FLOW}
             selected={lead?.status}
-            onSelect={(s) => changeStatus.mutate(s)}
+            onSelect={(s) => {
+              // Contacted is the one change worth a note — captured before
+              // the status actually changes, both folded into one request.
+              if (s === 'contacted') { setContactedNoteOpen(true); return }
+              changeStatus.mutate({ status: s })
+            }}
             onClose={() => setStatusOpen(false)}
           />
           <FollowUpSheet
@@ -402,11 +449,34 @@ export default function ChatThreadScreen() {
             onSchedule={(iso) => { scheduleFollowUp.mutate(iso); setFollowUpOpen(false) }}
             onClose={() => setFollowUpOpen(false)}
           />
+          <FollowUpSheet
+            visible={siteVisitOpen}
+            title="Schedule site visit"
+            current={lead?.siteVisitAt}
+            onSchedule={(iso) => { scheduleSiteVisit.mutate(iso); setSiteVisitOpen(false) }}
+            onClose={() => setSiteVisitOpen(false)}
+          />
+          <ContactedNoteSheet
+            visible={contactedNoteOpen}
+            onSave={(note) => finishContacted(note, false)}
+            onScheduleVisit={(note) => finishContacted(note, true)}
+            onClose={() => setContactedNoteOpen(false)}
+          />
           <QuickRepliesSheet
             visible={quickRepliesOpen}
             onSelect={(t: MessageTemplate) => sendQuickReply.mutate(t._id)}
             onClose={() => setQuickRepliesOpen(false)}
           />
+          {!!lead && (
+            <UnitSizeSheet
+              visible={unitSizeOpen}
+              storageSizeValue={lead.storageSizeValue}
+              durationValue={lead.durationValue}
+              durationUnit={lead.durationUnit}
+              onSave={(v) => updateUnitSize.mutate(v)}
+              onClose={() => setUnitSizeOpen(false)}
+            />
+          )}
         </>
       )}
     </>
