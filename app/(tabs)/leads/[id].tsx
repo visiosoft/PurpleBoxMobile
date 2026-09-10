@@ -305,7 +305,7 @@ export default function LeadDetailScreen() {
             <PressableScale
               onPress={() => setLostPickerOpen(true)}
               disabled={markLost.isPending}
-              style={{ flex: 1, height: 48, borderRadius: 15, borderWidth: 1, borderColor: COLORS.line, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
+              style={{ flex: 1, height: 48, borderRadius: 15, borderWidth: 1.5, borderColor: COLORS.chevron, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: COLORS.ink3 }}>Mark as Lost</Text>
             </PressableScale>

@@ -167,8 +167,8 @@ function FollowUpCard({
           <PressableScale onPress={() => onChat(f.phone, f.fullName, f._id)} style={{ flex: 1, height: 38, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
           </PressableScale>
-          <PressableScale onPress={() => onCall(f.phone)} style={{ paddingHorizontal: 14, height: 38, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.ink2 }}>Call</Text>
+          <PressableScale onPress={() => onCall(f.phone)} style={{ paddingHorizontal: 14, height: 38, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Call</Text>
           </PressableScale>
         </View>
       </View>

@@ -219,7 +219,7 @@ function LeadCard({
           <PressableScale onPress={onChat} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', ...SHADOWS.whatsappGlow }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
           </PressableScale>
-          <PressableScale onPress={onOpen} style={{ flex: 1, height: 40, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(91,43,201,0.22)', backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
+          <PressableScale onPress={onOpen} style={{ flex: 1, height: 40, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Follow-up</Text>
           </PressableScale>
         </View>
