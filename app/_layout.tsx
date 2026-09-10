@@ -14,6 +14,8 @@ import {
   PlusJakartaSans_500Medium,
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans'
+import { useFonts as useIconFont } from 'expo-font'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { AuthProvider, useAuth } from '../src/lib/auth'
 import {
   registerForPushNotificationsAsync,
@@ -110,7 +112,14 @@ function PushIntegration() {
 export default function RootLayout() {
   const [bricolageLoaded] = useBricolage({ BricolageGrotesque_700Bold })
   const [jakartaLoaded] = useJakarta({ PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold })
-  const fontsLoaded = bricolageLoaded && jakartaLoaded
+  /* Every <Ionicons> instance tracks its own Font.isLoaded('ionicons') state
+     and renders a blank <Text/> until it resolves (@expo/vector-icons'
+     createIconSet) — on native this resolves fast enough nobody notices, but
+     on web the font is fetched over the network, so without this gate the
+     tab bar icons (WhatsApp's especially, since its badge count re-renders
+     it on every poll) could paint blank on first load. */
+  const [iconsLoaded] = useIconFont(Ionicons.font)
+  const fontsLoaded = bricolageLoaded && jakartaLoaded && iconsLoaded
   const [appReady, setAppReady] = useState(false)
 
   useEffect(() => {
