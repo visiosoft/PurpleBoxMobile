@@ -112,6 +112,11 @@ export const leadApi = {
   updateStatus: (id: string, status: LeadStatus, comment?: string) =>
     api.patch<Lead>(`/leads/${id}/status`, { status, comment }).then((r) => r.data),
   addComment: (id: string, text: string) => api.post<Lead>(`/leads/${id}/comments`, { text }).then((r) => r.data),
+  /** `PUT /leads/:id` merges the sent fields onto the stored lead server-side
+   *  (`cleanBody({...lead.toObject(), ...req.body})`), so a follow-up-only
+   *  patch like this never needs to resend the rest of the record. */
+  scheduleFollowUp: (id: string, followUpAt: string | null) =>
+    api.put<Lead>(`/leads/${id}`, { followUpAt }).then((r) => r.data),
   addAttempt: (id: string, body: { outcome: AttemptOutcome; channel?: AttemptChannel; note?: string }) =>
     api
       .post<{ attempt: LeadAttempt; exhausted: boolean; suggestStatus: LeadStatus | null; sequence: number; followUpAt: string | null }>(

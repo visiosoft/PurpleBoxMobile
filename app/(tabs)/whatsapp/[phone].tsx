@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react'
 import {
   View, Text, TextInput, FlatList, Pressable, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, Image,
+  KeyboardAvoidingView, Platform, Image, Linking,
 } from 'react-native'
-import { useLocalSearchParams, Stack } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { whatsappApi, type WhatsAppMsg } from '../../../src/lib/whatsapp'
+import { leadApi, type LeadStatus } from '../../../src/lib/leads'
+import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
 import { markSeen } from '../../../src/lib/seen'
 import { COLORS, FONTS } from '../../../src/lib/theme'
 import Attachment from '../../../src/components/whatsapp/Attachment'
 import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
+import PickerSheet from '../../../src/components/PickerSheet'
+import FollowUpSheet from '../../../src/components/FollowUpSheet'
 import PressableScale from '../../../src/components/PressableScale'
 
 type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' }
@@ -23,12 +28,15 @@ function bubbleTime(iso: string): string {
 
 export default function ChatThreadScreen() {
   const { phone, name, leadId } = useLocalSearchParams<{ phone: string; name?: string; leadId?: string }>()
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState('')
   const [pendingMedia, setPendingMedia] = useState<PendingMedia | null>(null)
   const [uploadPct, setUploadPct] = useState<number | null>(null)
   const [sendErr, setSendErr] = useState('')
   const [scoreOpen, setScoreOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
+  const [followUpOpen, setFollowUpOpen] = useState(false)
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['wa-messages', phone],
@@ -36,6 +44,23 @@ export default function ChatThreadScreen() {
     enabled: !!phone,
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
+  })
+
+  const { data: lead } = useQuery({
+    queryKey: ['lead', leadId],
+    queryFn: () => leadApi.get(leadId!),
+    enabled: !!leadId,
+  })
+  const invalidateLead = () => queryClient.invalidateQueries({ queryKey: ['lead', leadId] })
+  const changeStatus = useMutation({
+    mutationFn: (status: LeadStatus) => leadApi.updateStatus(leadId!, status),
+    onSuccess: invalidateLead,
+    onError: (e) => Alert.alert('Could not update status', apiError(e)),
+  })
+  const scheduleFollowUp = useMutation({
+    mutationFn: (iso: string) => leadApi.scheduleFollowUp(leadId!, iso),
+    onSuccess: invalidateLead,
+    onError: (e) => Alert.alert('Could not schedule follow-up', apiError(e)),
   })
 
   useEffect(() => {
@@ -102,21 +127,63 @@ export default function ChatThreadScreen() {
     ])
   }
 
+  const meta = lead ? statusMeta(lead.status) : null
+
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: name || phone,
-          headerRight: leadId
-            ? () => (
-              <PressableScale onPress={() => setScoreOpen(true)} hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="sparkles" size={18} color={COLORS.brand} />
-                <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.brand }}>Score</Text>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={{ backgroundColor: COLORS.purple600 }}>
+        <SafeAreaView edges={['top']}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 }}>
+            <PressableScale onPress={() => router.back()} style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-back" size={18} color="#fff" />
+            </PressableScale>
+            <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: FONTS.display, fontSize: 15, color: '#fff' }}>{(name || phone || '?').slice(0, 1).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: '#fff' }}>{name || phone}</Text>
+              <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.body, fontSize: 11, color: 'rgba(255,255,255,0.8)', fontVariant: ['tabular-nums'] }}>{phone}</Text>
+            </View>
+            <PressableScale onPress={() => Linking.openURL(`tel:${phone}`)} style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="call-outline" size={16} color="#fff" />
+            </PressableScale>
+            {!!leadId && (
+              <PressableScale onPress={() => setScoreOpen(true)} style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="sparkles" size={16} color="#fff" />
               </PressableScale>
-            )
-            : undefined,
-        }}
-      />
+            )}
+          </View>
+        </SafeAreaView>
+      </View>
+
+      {!!leadId && lead && meta && (
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line, paddingHorizontal: 12, paddingVertical: 9 }}>
+          <PressableScale
+            onPress={() => setStatusOpen(true)}
+            style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+          >
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.dot }} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Status</Text>
+              <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.ink }}>{meta.label}</Text>
+            </View>
+          </PressableScale>
+          <PressableScale
+            onPress={() => setFollowUpOpen(true)}
+            style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(91,43,201,0.2)', backgroundColor: COLORS.purple50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+          >
+            <Ionicons name="calendar-outline" size={15} color={COLORS.purple600} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.purple400 }}>Follow-up</Text>
+              <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>
+                {lead.followUpAt ? new Date(lead.followUpAt).toLocaleDateString([], { day: 'numeric', month: 'short' }) : 'Set date'}
+              </Text>
+            </View>
+          </PressableScale>
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: '#F6F0E4' }}
@@ -194,7 +261,23 @@ export default function ChatThreadScreen() {
       </KeyboardAvoidingView>
 
       {!!leadId && (
-        <ScoreSheet leadId={leadId} leadName={name || phone} visible={scoreOpen} onClose={() => setScoreOpen(false)} />
+        <>
+          <ScoreSheet leadId={leadId} leadName={name || phone} visible={scoreOpen} onClose={() => setScoreOpen(false)} />
+          <PickerSheet
+            visible={statusOpen}
+            title="Change status"
+            options={LEAD_STATUS_FLOW}
+            selected={lead?.status}
+            onSelect={(s) => changeStatus.mutate(s)}
+            onClose={() => setStatusOpen(false)}
+          />
+          <FollowUpSheet
+            visible={followUpOpen}
+            current={lead?.followUpAt}
+            onSchedule={(iso) => { scheduleFollowUp.mutate(iso); setFollowUpOpen(false) }}
+            onClose={() => setFollowUpOpen(false)}
+          />
+        </>
       )}
     </>
   )
