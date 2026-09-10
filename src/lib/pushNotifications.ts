@@ -5,15 +5,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { api } from './api'
 
 /**
- * Lead-assignment push notifications, via Expo.
+ * Push notifications, via Expo — lead assignment, and every inbound WhatsApp
+ * reply on a chat somebody already owns.
  *
- * This is the only thing PurpleBoxMobile currently pushes for. A lead can
- * land on a rep from three places on the server — a person assigning it by
- * hand, the distribution rules, or the SLA reassign clock — and all three
- * already funnel through server/src/services/leadNotify.js, which is the
- * single place that decides a hand-off happened and builds the notice. This
- * file never needs to know which of those fired; it only ever reacts to the
- * one notification shape that function sends, keyed on `data.type`.
+ * A lead can land on a rep from three places on the server — a person
+ * assigning it by hand, the distribution rules, or the SLA reassign clock —
+ * and a reply arrives from one, the webhook. All four already funnel through
+ * server/src/services/leadNotify.js, which is the single place that decides
+ * a person needs to hear about something and builds the notice. This file
+ * never needs to know which of those fired; it only ever reacts to the
+ * notification shapes that module sends, keyed on `data.type`.
  *
  * Kept apart from src/lib/notifications.ts on purpose — that file is the
  * in-app badge for waiting chats and follow-ups, a client-side read of data
@@ -24,7 +25,8 @@ import { api } from './api'
 export type LeadAssignedData = { type: 'lead_assigned'; phone: string; leadId: string; name: string }
 export type LeadAssignedSummaryData = { type: 'lead_assigned_summary' }
 export type LeadDismissData = { type: 'lead_assigned_dismiss'; leadId: string }
-export type PushData = LeadAssignedData | LeadAssignedSummaryData | LeadDismissData | Record<string, unknown>
+export type WhatsAppMessageData = { type: 'whatsapp_message'; phone: string; leadId: string; name: string }
+export type PushData = LeadAssignedData | LeadAssignedSummaryData | LeadDismissData | WhatsAppMessageData | Record<string, unknown>
 
 /**
  * Foreground behaviour. A rep with the app open is exactly who most needs to
@@ -206,8 +208,9 @@ export function wireNotificationListeners(router: Router): () => void {
 
   const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data as PushData
-    if ((data as LeadAssignedData)?.type === 'lead_assigned') {
-      const d = data as LeadAssignedData
+    const type = (data as { type?: string })?.type
+    if (type === 'lead_assigned' || type === 'whatsapp_message') {
+      const d = data as LeadAssignedData | WhatsAppMessageData
       router.push({
         pathname: '/whatsapp/[phone]',
         params: { phone: d.phone, name: d.name || '', leadId: d.leadId || '' },
