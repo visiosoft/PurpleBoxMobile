@@ -1,8 +1,9 @@
 import '../global.css'
 import { useEffect, useRef, useState } from 'react'
-import { AppState, type AppStateStatus } from 'react-native'
+import { AppState, Platform, type AppStateStatus } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import Constants, { ExecutionEnvironment } from 'expo-constants'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -17,15 +18,15 @@ import {
 import { useFonts as useIconFont } from 'expo-font'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { AuthProvider, useAuth } from '../src/lib/auth'
-import {
-  registerForPushNotificationsAsync,
-  addTokenRefreshListener,
-  wireNotificationListeners,
-  refreshBadgeFromServer,
-  unregisterCurrentPushToken,
-} from '../src/lib/pushNotifications'
 
-SplashScreen.preventAutoHideAsync().catch(() => {})
+const supportsRemotePush = Platform.OS !== 'web'
+  && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient
+
+function loadPushNotifications() {
+  return supportsRemotePush ? import('../src/lib/pushNotifications') : Promise.resolve(null)
+}
+
+SplashScreen.preventAutoHideAsync().catch(() => { })
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -80,22 +81,44 @@ function PushIntegration() {
   // which lead so a later silent push can clear it — both apply regardless
   // of auth state; RouteGuard above already sends a signed-out tap to
   // /login instead of the thread it named.
-  useEffect(() => wireNotificationListeners(router), [router])
+  useEffect(() => {
+    let cleanup: (() => void) | undefined
+    let active = true
+    loadPushNotifications().then((push) => {
+      if (active && push) cleanup = push.wireNotificationListeners(router)
+    })
+    return () => {
+      active = false
+      cleanup?.()
+    }
+  }, [router])
 
   useEffect(() => {
     if (isSignedIn && !wasSignedIn.current) {
-      registerForPushNotificationsAsync()
-      refreshBadgeFromServer()
+      loadPushNotifications().then((push) => {
+        push?.registerForPushNotificationsAsync()
+        push?.refreshBadgeFromServer()
+      })
     } else if (!isSignedIn && wasSignedIn.current) {
-      unregisterCurrentPushToken()
+      loadPushNotifications().then((push) => push?.unregisterCurrentPushToken())
     }
     wasSignedIn.current = isSignedIn
   }, [isSignedIn])
 
   useEffect(() => {
     if (!isSignedIn) return undefined
-    const sub = addTokenRefreshListener()
-    return () => sub.remove()
+    let cleanup: (() => void) | undefined
+    let active = true
+    loadPushNotifications().then((push) => {
+      if (active && push) {
+        const sub = push.addTokenRefreshListener()
+        cleanup = () => sub.remove()
+      }
+    })
+    return () => {
+      active = false
+      cleanup?.()
+    }
   }, [isSignedIn])
 
   // The one thing that can never go stale: whatever a push tray does or
@@ -103,7 +126,9 @@ function PushIntegration() {
   // moment somebody actually opens the app.
   useEffect(() => {
     const onChange = (state: AppStateStatus) => {
-      if (state === 'active' && isSignedIn) refreshBadgeFromServer()
+      if (state === 'active' && isSignedIn) {
+        loadPushNotifications().then((push) => push?.refreshBadgeFromServer())
+      }
     }
     const sub = AppState.addEventListener('change', onChange)
     return () => sub.remove()
@@ -128,7 +153,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       setAppReady(true)
-      SplashScreen.hideAsync().catch(() => {})
+      SplashScreen.hideAsync().catch(() => { })
     }
   }, [fontsLoaded])
 

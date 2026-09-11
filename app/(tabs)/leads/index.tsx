@@ -41,6 +41,16 @@ export default function LeadsListScreen() {
   const [status, setStatus] = useState('all')
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
+  const [manualRefreshing, setManualRefreshing] = useState(false)
+
+  const onManualRefresh = async () => {
+    setManualRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setManualRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 250)
@@ -50,7 +60,7 @@ export default function LeadsListScreen() {
   const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: leadApi.stats, staleTime: 30_000 })
 
   const {
-    data, isLoading, isError, error, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage,
+    data, isLoading, isError, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: ['leads', status, debouncedQ],
     queryFn: ({ pageParam }) =>
@@ -127,11 +137,11 @@ export default function LeadsListScreen() {
         </SafeAreaView>
       </View>
 
-      {isLoading ? (
+      {isLoading && leads.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={COLORS.purple600} />
         </View>
-      ) : isError ? (
+      ) : isError && leads.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 }}>
           <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.danger, textAlign: 'center' }}>{apiError(error)}</Text>
           <Pressable onPress={() => refetch()}>
@@ -150,8 +160,8 @@ export default function LeadsListScreen() {
         <FlatList
           data={leads}
           keyExtractor={(l) => l._id}
-          onRefresh={refetch}
-          refreshing={isFetching && !isFetchingNextPage}
+          onRefresh={onManualRefresh}
+          refreshing={manualRefreshing}
           onEndReachedThreshold={0.4}
           onEndReached={() => { if (hasNextPage) fetchNextPage() }}
           contentContainerStyle={{ padding: 16, gap: 11 }}

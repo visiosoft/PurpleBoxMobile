@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { View, Text, FlatList, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -20,11 +21,22 @@ import ScreenHeader from '../../src/components/ScreenHeader'
  */
 export default function AssignTab() {
   const router = useRouter()
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const [manualRefreshing, setManualRefreshing] = useState(false)
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['leads-unassigned'],
     queryFn: () => leadApi.list({ owner: 'unassigned', limit: 100 }),
     staleTime: 15_000,
   })
+
+  const onManualRefresh = async () => {
+    setManualRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setManualRefreshing(false)
+    }
+  }
 
   const leads = data?.data ?? []
 
@@ -39,11 +51,11 @@ export default function AssignTab() {
         }
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        {isLoading ? (
+        {isLoading && leads.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={COLORS.purple600} />
           </View>
-        ) : isError ? (
+        ) : isError && leads.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 }}>
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.danger, textAlign: 'center' }}>{apiError(error)}</Text>
             <PressableScale onPress={() => refetch()}>
@@ -61,8 +73,8 @@ export default function AssignTab() {
           <FlatList
             data={leads}
             keyExtractor={(l: Lead) => l._id}
-            onRefresh={refetch}
-            refreshing={isFetching}
+            onRefresh={onManualRefresh}
+            refreshing={manualRefreshing}
             contentContainerStyle={{ padding: 16, gap: 10 }}
             renderItem={({ item }) => (
               <PressableScale

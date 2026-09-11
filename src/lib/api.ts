@@ -1,5 +1,6 @@
 import axios from 'axios'
 import * as SecureStore from 'expo-secure-store'
+import { Platform } from 'react-native'
 
 /**
  * The same API the web app talks to — api.purplebox.ae. Nothing here is a
@@ -19,10 +20,33 @@ export const API_BASE_URL = 'https://api.purplebox.ae/api'
 const TOKEN_KEY = 'pb_token'
 const USER_KEY = 'pb_user'
 
+async function getStorageItem(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return typeof localStorage === 'undefined' ? null : localStorage.getItem(key)
+  }
+  return SecureStore.getItemAsync(key)
+}
+
+async function setStorageItem(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value)
+    return
+  }
+  await SecureStore.setItemAsync(key, value)
+}
+
+async function deleteStorageItem(key: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(key)
+    return
+  }
+  await SecureStore.deleteItemAsync(key)
+}
+
 export const api = axios.create({ baseURL: API_BASE_URL })
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY)
+  const token = await getStorageItem(TOKEN_KEY)
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -52,20 +76,20 @@ export function apiError(err: unknown): string {
 }
 
 export async function getStoredToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY)
+  return getStorageItem(TOKEN_KEY)
 }
 
 export async function getStoredUser<T = unknown>(): Promise<T | null> {
-  const raw = await SecureStore.getItemAsync(USER_KEY)
+  const raw = await getStorageItem(USER_KEY)
   return raw ? (JSON.parse(raw) as T) : null
 }
 
 export async function storeSession(token: string, user: unknown) {
-  await SecureStore.setItemAsync(TOKEN_KEY, token)
-  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user))
+  await setStorageItem(TOKEN_KEY, token)
+  await setStorageItem(USER_KEY, JSON.stringify(user))
 }
 
 export async function clearSession() {
-  await SecureStore.deleteItemAsync(TOKEN_KEY)
-  await SecureStore.deleteItemAsync(USER_KEY)
+  await deleteStorageItem(TOKEN_KEY)
+  await deleteStorageItem(USER_KEY)
 }

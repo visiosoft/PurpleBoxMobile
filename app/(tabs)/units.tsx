@@ -35,13 +35,23 @@ export default function UnitsScreen() {
   const [toDate, setToDate] = useState<string | null>(null)
   const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null)
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
+  const [manualRefreshing, setManualRefreshing] = useState(false)
 
   const datesSet = !!(fromDate && toDate)
 
-  const { data: rawUnits = [], isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data: rawUnits = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['units', datesSet, fromDate, toDate],
     queryFn: () => (datesSet ? unitApi.availableInPeriod(fromDate!, toDate!) : unitApi.list()),
   })
+
+  const onManualRefresh = async () => {
+    setManualRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setManualRefreshing(false)
+    }
+  }
 
   const sizes = useMemo(() => {
     const set = new Set<number>()
@@ -62,135 +72,135 @@ export default function UnitsScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
       <ScreenHeader title="Search Unit" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
-        <View
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
-            borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 12, height: 42,
-          }}
-        >
-          <Ionicons name="search" size={17} color={COLORS.faint} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Unit number"
-            placeholderTextColor={COLORS.faint}
-            style={{ flex: 1, fontFamily: FONTS.body, fontSize: 14, color: COLORS.ink }}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={17} color={COLORS.faint} />
-            </Pressable>
-          )}
-        </View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
+          <View
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
+              borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 12, height: 42,
+            }}
+          >
+            <Ionicons name="search" size={17} color={COLORS.faint} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Unit number"
+              placeholderTextColor={COLORS.faint}
+              style={{ flex: 1, fontFamily: FONTS.body, fontSize: 14, color: COLORS.ink }}
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={17} color={COLORS.faint} />
+              </Pressable>
+            )}
+          </View>
 
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={STATUS_FILTERS}
-          keyExtractor={(f) => f.value}
-          contentContainerStyle={{ gap: 8 }}
-          renderItem={({ item }) => {
-            const active = status === item.value
-            return (
-              <PressableScale
-                onPress={() => setStatus(item.value)}
-                style={{
-                  paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: active ? COLORS.brand : '#fff', borderWidth: 1.5, borderColor: active ? COLORS.brand : COLORS.chevron,
-                }}
-              >
-                <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: active ? '#fff' : COLORS.muted }}>{item.label}</Text>
-              </PressableScale>
-            )
-          }}
-        />
-
-        {sizes.length > 0 && (
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={[{ value: null as number | null, label: 'Any size' }, ...sizes.map((s) => ({ value: s, label: `${s} sqft` }))]}
-            keyExtractor={(s) => String(s.value)}
+            data={STATUS_FILTERS}
+            keyExtractor={(f) => f.value}
             contentContainerStyle={{ gap: 8 }}
             renderItem={({ item }) => {
-              const active = size === item.value
+              const active = status === item.value
               return (
                 <PressableScale
-                  onPress={() => setSize(item.value)}
+                  onPress={() => setStatus(item.value)}
                   style={{
-                    paddingHorizontal: 12, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: active ? COLORS.brandTint : '#fff', borderWidth: 1, borderColor: active ? COLORS.brand : COLORS.line,
+                    paddingHorizontal: 14, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: active ? COLORS.brand : '#fff', borderWidth: 1.5, borderColor: active ? COLORS.brand : COLORS.chevron,
                   }}
                 >
-                  <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: active ? COLORS.brandDark : COLORS.muted }}>{item.label}</Text>
+                  <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: active ? '#fff' : COLORS.muted }}>{item.label}</Text>
                 </PressableScale>
               )
             }}
           />
+
+          {sizes.length > 0 && (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={[{ value: null as number | null, label: 'Any size' }, ...sizes.map((s) => ({ value: s, label: `${s} sqft` }))]}
+              keyExtractor={(s) => String(s.value)}
+              contentContainerStyle={{ gap: 8 }}
+              renderItem={({ item }) => {
+                const active = size === item.value
+                return (
+                  <PressableScale
+                    onPress={() => setSize(item.value)}
+                    style={{
+                      paddingHorizontal: 12, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: active ? COLORS.brandTint : '#fff', borderWidth: 1, borderColor: active ? COLORS.brand : COLORS.line,
+                    }}
+                  >
+                    <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: active ? COLORS.brandDark : COLORS.muted }}>{item.label}</Text>
+                  </PressableScale>
+                )
+              }}
+            />
+          )}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.muted} />
+            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.muted }}>Free from</Text>
+            <PressableScale onPress={() => setPickerFor('from')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink }}>{displayDate(fromDate)}</Text>
+            </PressableScale>
+            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.muted }}>to</Text>
+            <PressableScale onPress={() => setPickerFor('to')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink }}>{displayDate(toDate)}</Text>
+            </PressableScale>
+            {datesSet && (
+              <Pressable onPress={() => { setFromDate(null); setToDate(null) }} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={COLORS.faint} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {isLoading && filtered.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={COLORS.brand} />
+          </View>
+        ) : isError && filtered.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 }}>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.bad, textAlign: 'center' }}>{apiError(error)}</Text>
+            <Pressable onPress={() => refetch()}>
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.brand }}>Try again</Text>
+            </Pressable>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <Ionicons name="cube-outline" size={40} color={COLORS.faint} />
+            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.muted, marginTop: 10 }}>No units match</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(u) => u._id}
+            onRefresh={onManualRefresh}
+            refreshing={manualRefreshing}
+            contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 10 }}
+            renderItem={({ item }) => <UnitCard unit={item} datesSet={datesSet} onPress={() => setSelectedUnitId(item._id)} />}
+          />
         )}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="calendar-outline" size={16} color={COLORS.muted} />
-          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.muted }}>Free from</Text>
-          <PressableScale onPress={() => setPickerFor('from')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
-            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink }}>{displayDate(fromDate)}</Text>
-          </PressableScale>
-          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.muted }}>to</Text>
-          <PressableScale onPress={() => setPickerFor('to')} style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.line, paddingHorizontal: 10, paddingVertical: 5 }}>
-            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink }}>{displayDate(toDate)}</Text>
-          </PressableScale>
-          {datesSet && (
-            <Pressable onPress={() => { setFromDate(null); setToDate(null) }} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color={COLORS.faint} />
-            </Pressable>
-          )}
-        </View>
-      </View>
+        {pickerFor && (
+          <DateTimePicker
+            value={(pickerFor === 'from' ? fromDate && new Date(fromDate) : toDate && new Date(toDate)) || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            onChange={(_, d) => {
+              const which = pickerFor
+              setPickerFor(null)
+              if (!d) return
+              if (which === 'from') setFromDate(toIsoDate(d))
+              else setToDate(toIsoDate(d))
+            }}
+          />
+        )}
 
-      {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={COLORS.brand} />
-        </View>
-      ) : isError ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 }}>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.bad, textAlign: 'center' }}>{apiError(error)}</Text>
-          <Pressable onPress={() => refetch()}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.brand }}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Ionicons name="cube-outline" size={40} color={COLORS.faint} />
-          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 15, color: COLORS.muted, marginTop: 10 }}>No units match</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(u) => u._id}
-          onRefresh={refetch}
-          refreshing={isFetching}
-          contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 10 }}
-          renderItem={({ item }) => <UnitCard unit={item} datesSet={datesSet} onPress={() => setSelectedUnitId(item._id)} />}
-        />
-      )}
-
-      {pickerFor && (
-        <DateTimePicker
-          value={(pickerFor === 'from' ? fromDate && new Date(fromDate) : toDate && new Date(toDate)) || new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={(_, d) => {
-            const which = pickerFor
-            setPickerFor(null)
-            if (!d) return
-            if (which === 'from') setFromDate(toIsoDate(d))
-            else setToDate(toIsoDate(d))
-          }}
-        />
-      )}
-
-      <UnitDetailSheet unitId={selectedUnitId} visible={!!selectedUnitId} onClose={() => setSelectedUnitId(null)} />
+        <UnitDetailSheet unitId={selectedUnitId} visible={!!selectedUnitId} onClose={() => setSelectedUnitId(null)} />
       </SafeAreaView>
     </View>
   )

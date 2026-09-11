@@ -49,12 +49,22 @@ function overdueLabel(iso: string | null): string {
 export default function FollowUpsTab() {
   const router = useRouter()
   const [tab, setTab] = useState<FuTab>('today')
+  const [manualRefreshing, setManualRefreshing] = useState(false)
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['follow-ups'],
     queryFn: leadApi.followUps,
     staleTime: 30_000,
   })
+
+  const onManualRefresh = async () => {
+    setManualRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setManualRefreshing(false)
+    }
+  }
 
   const counts = { today: data?.today.length ?? 0, upcoming: data?.upcoming.length ?? 0, overdue: data?.overdue.length ?? 0 }
   const list = data?.[tab] ?? []
@@ -104,11 +114,11 @@ export default function FollowUpsTab() {
           </View>
         </View>
 
-        {isLoading ? (
+        {isLoading && list.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={COLORS.purple600} />
           </View>
-        ) : isError ? (
+        ) : isError && list.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 }}>
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.danger, textAlign: 'center' }}>{apiError(error)}</Text>
             <PressableScale onPress={() => refetch()}>
@@ -127,8 +137,8 @@ export default function FollowUpsTab() {
           <FlatList
             data={list}
             keyExtractor={(f) => f._id}
-            onRefresh={refetch}
-            refreshing={isFetching}
+            onRefresh={onManualRefresh}
+            refreshing={manualRefreshing}
             contentContainerStyle={{ padding: 16, gap: 11 }}
             renderItem={({ item }) => <FollowUpCard f={item} onOpen={openLead} onChat={openChat} onCall={call} />}
           />

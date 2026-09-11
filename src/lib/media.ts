@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from 'expo-file-system'
+import { Platform } from 'react-native'
 import { API_BASE_URL, getStoredToken } from './api'
 
 /**
@@ -9,8 +10,16 @@ import { API_BASE_URL, getStoredToken } from './api'
  * bearer token attached and then reused by every bubble, re-render, and
  * poll for that message.
  */
-const mediaDir = new Directory(Paths.cache, 'wa-media')
 const uris = new Map<string, Promise<string>>()
+
+async function loadWebMediaUri(messageId: string): Promise<string> {
+  const token = await getStoredToken()
+  const response = await fetch(`${API_BASE_URL}/whatsapp-media/${encodeURIComponent(messageId)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!response.ok) throw new Error(`Media request failed with status ${response.status}`)
+  return URL.createObjectURL(await response.blob())
+}
 
 function extFromMime(mime: string): string {
   const known: Record<string, string> = {
@@ -27,6 +36,9 @@ export function loadMediaUri(messageId: string, mimeType: string): Promise<strin
   if (cached) return cached
 
   const p = (async () => {
+    if (Platform.OS === 'web') return loadWebMediaUri(messageId)
+
+    const mediaDir = new Directory(Paths.cache, 'wa-media')
     if (!mediaDir.exists) mediaDir.create({ intermediates: true })
 
     const dest = new File(mediaDir, `${encodeURIComponent(messageId)}.${extFromMime(mimeType)}`)
