@@ -16,7 +16,7 @@ import { leadApi, type LeadStatus } from '../../../src/lib/leads'
 import { userApi } from '../../../src/lib/users'
 import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
-import { notify } from '../../../src/lib/alert'
+import { notify, confirmAction } from '../../../src/lib/alert'
 import { markSeen } from '../../../src/lib/seen'
 import { useAuth } from '../../../src/lib/auth'
 import { COLORS, FONTS } from '../../../src/lib/theme'
@@ -171,6 +171,21 @@ export default function ChatThreadScreen() {
     onSuccess: invalidate,
     onError: (e) => setSendErr(apiError(e)),
   })
+
+  const deleteMessage = useMutation({
+    mutationFn: (id: string) => whatsappApi.deleteMessage(id),
+    onSuccess: invalidate,
+    onError: (e) => notify('Could not delete', apiError(e)),
+  })
+  function confirmDeleteMessage(id: string) {
+    confirmAction(
+      'Delete this message?',
+      'WhatsApp gives businesses no way to unsend a message — the customer will still have it on their phone. This only removes it from our own record.',
+      'Delete',
+      () => deleteMessage.mutate(id),
+      { destructive: true },
+    )
+  }
 
   const sending = sendText.isPending || sendMedia.isPending
   const hasMoreHistory = messages.length >= messageLimit
@@ -332,7 +347,7 @@ export default function ChatThreadScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
-        {isLoading ? (
+        {isLoading && messages.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={COLORS.brand} />
           </View>
@@ -348,7 +363,7 @@ export default function ChatThreadScreen() {
             keyExtractor={(m) => m._id}
             inverted
             contentContainerStyle={{ padding: 12, gap: 8 }}
-            renderItem={({ item }) => <MessageBubble msg={item} />}
+            renderItem={({ item }) => <MessageBubble msg={item} onDelete={confirmDeleteMessage} />}
             // Inverted flips "end" to mean the far side of the data array —
             // data[last] is the oldest message and renders at the visual
             // top, so reaching it is exactly "scrolled up for history".
@@ -410,55 +425,55 @@ export default function ChatThreadScreen() {
             </PressableScale>
           </View>
         ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12 }}>
-          <PressableScale
-            onPress={pickMedia}
-            disabled={sending}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons name="add" size={22} color={COLORS.brand} />
-          </PressableScale>
-          {!!leadId && (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12 }}>
             <PressableScale
-              onPress={() => setQuickRepliesOpen(true)}
+              onPress={pickMedia}
               disabled={sending}
               style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Ionicons name="flash-outline" size={20} color={COLORS.brand} />
+              <Ionicons name="add" size={22} color={COLORS.brand} />
             </PressableScale>
-          )}
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={pendingMedia ? 'Add a caption…' : 'Message'}
-            placeholderTextColor={COLORS.faint}
-            multiline
-            style={{
-              flex: 1, maxHeight: 100, backgroundColor: '#fff', borderRadius: 20,
-              paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
-            }}
-          />
-          {!draft.trim() && !pendingMedia ? (
-            <PressableScale
-              onPress={startRecording}
-              disabled={sending}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name="mic" size={19} color="#fff" />
-            </PressableScale>
-          ) : (
-          <PressableScale
-            onPress={handleSend}
-            disabled={sending || (!draft.trim() && !pendingMedia)}
-            style={{
-              width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
-              backgroundColor: sending || (!draft.trim() && !pendingMedia) ? COLORS.faint : COLORS.brand,
-            }}
-          >
-            {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={17} color="#fff" />}
-          </PressableScale>
-          )}
-        </View>
+            {!!leadId && (
+              <PressableScale
+                onPress={() => setQuickRepliesOpen(true)}
+                disabled={sending}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="flash-outline" size={20} color={COLORS.brand} />
+              </PressableScale>
+            )}
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={pendingMedia ? 'Add a caption…' : 'Message'}
+              placeholderTextColor={COLORS.faint}
+              multiline
+              style={{
+                flex: 1, maxHeight: 100, backgroundColor: '#fff', borderRadius: 20,
+                paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
+              }}
+            />
+            {!draft.trim() && !pendingMedia ? (
+              <PressableScale
+                onPress={startRecording}
+                disabled={sending}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="mic" size={19} color="#fff" />
+              </PressableScale>
+            ) : (
+              <PressableScale
+                onPress={handleSend}
+                disabled={sending || (!draft.trim() && !pendingMedia)}
+                style={{
+                  width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: sending || (!draft.trim() && !pendingMedia) ? COLORS.faint : COLORS.brand,
+                }}
+              >
+                {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={17} color="#fff" />}
+              </PressableScale>
+            )}
+          </View>
         )}
       </KeyboardAvoidingView>
 
@@ -528,11 +543,15 @@ export default function ChatThreadScreen() {
   )
 }
 
-function MessageBubble({ msg }: { msg: WhatsAppMsg }) {
+function MessageBubble({ msg, onDelete }: { msg: WhatsAppMsg; onDelete: (id: string) => void }) {
   const outbound = msg.direction === 'outbound'
+  // Deleting only ever applies to a message we sent, and only once — Meta
+  // gives no unsend, so there's nothing left to delete a second time.
+  const deletable = outbound && !msg.deletedAt
   return (
     <View style={{ alignItems: outbound ? 'flex-end' : 'flex-start' }}>
-      <View
+      <Pressable
+        onLongPress={deletable ? () => onDelete(msg._id) : undefined}
         style={{
           maxWidth: '80%', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8,
           backgroundColor: outbound ? '#D9FDD3' : '#fff',
@@ -550,7 +569,7 @@ function MessageBubble({ msg }: { msg: WhatsAppMsg }) {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 3 }}>
           <Text style={{ fontFamily: FONTS.body, fontSize: 10.5, color: COLORS.faint }}>{bubbleTime(msg.occurredAt)}</Text>
         </View>
-      </View>
+      </Pressable>
     </View>
   )
 }

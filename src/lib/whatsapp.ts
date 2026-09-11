@@ -157,6 +157,11 @@ export const whatsappApi = {
    *  it, exactly like the web console's send-quick-reply button. */
   sendQuickReply: (to: string, templateId: string) =>
     api.post('/whatsapp/send-quick-reply', { to, templateId }).then((r) => r.data),
+  /** Meta has no unsend endpoint — this only removes a message we sent from
+   *  our own record (the bubble collapses to "This message was deleted"),
+   *  never from the customer's phone. Restricted server-side to outbound
+   *  messages. */
+  deleteMessage: (id: string) => api.delete<WhatsAppMsg>(`/whatsapp/messages/${id}`).then((r) => r.data),
 }
 
 /** Settings → Message Templates, reused as the quick-reply library — same

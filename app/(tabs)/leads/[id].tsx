@@ -10,6 +10,7 @@ import { leadApi, type AttemptChannel, type AttemptOutcome, type LeadStatus, typ
 import { LEAD_STATUS_FLOW, statusLabel, statusMeta, leadDisplayName } from '../../../src/lib/leadStatus'
 import { apiError } from '../../../src/lib/api'
 import { notify, confirmAction } from '../../../src/lib/alert'
+import { useAuth } from '../../../src/lib/auth'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, RADII, SHADOWS } from '../../../src/lib/theme'
 import PickerSheet from '../../../src/components/PickerSheet'
 import PressableScale from '../../../src/components/PressableScale'
@@ -45,6 +46,8 @@ export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [statusPickerOpen, setStatusPickerOpen] = useState(false)
   const [lostPickerOpen, setLostPickerOpen] = useState(false)
   const [scoreOpen, setScoreOpen] = useState(false)
@@ -90,14 +93,21 @@ export default function LeadDetailScreen() {
     onError: (e) => notify('Could not convert', apiError(e)),
   })
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.paper }}>
-        <ActivityIndicator color={COLORS.purple600} />
-      </View>
-    )
-  }
-  if (isError || !lead) {
+  // Admin only — the server refuses this for a sales rep too.
+  const removeLead = useMutation({
+    mutationFn: () => leadApi.remove(id),
+    onSuccess: () => router.back(),
+    onError: (e) => notify('Could not delete', apiError(e)),
+  })
+
+  if (!lead) {
+    if (isLoading) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.paper }}>
+          <ActivityIndicator color={COLORS.purple600} />
+        </View>
+      )
+    }
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.paper, padding: 24 }}>
         <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: COLORS.danger, textAlign: 'center' }}>{apiError(error)}</Text>
@@ -319,6 +329,22 @@ export default function LeadDetailScreen() {
           >
             {convert.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: '#fff' }}>Convert to customer</Text>}
           </PressableScale>
+
+          {isAdmin && (
+            <PressableScale
+              onPress={() => confirmAction(
+                'Delete this lead?',
+                `${name} and their activity history will be permanently deleted. This cannot be undone — the WhatsApp conversation itself is kept.`,
+                'Delete',
+                () => removeLead.mutate(),
+                { destructive: true },
+              )}
+              disabled={removeLead.isPending}
+              style={{ marginTop: 10, borderRadius: 15, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: COLORS.badBg, backgroundColor: '#fff' }}
+            >
+              {removeLead.isPending ? <ActivityIndicator color={COLORS.bad} /> : <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.bad }}>Delete lead</Text>}
+            </PressableScale>
+          )}
         </ScrollView>
       </View>
 

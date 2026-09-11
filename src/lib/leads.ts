@@ -145,4 +145,8 @@ export const leadApi = {
     api.post<{ ok: true; created: boolean; customer: { _id: string; fullName: string }; stage: 'prospect' | 'customer' }>(
       `/leads/${id}/convert`,
     ).then((r) => r.data),
+  /** Admin only — the server refuses this for a sales rep. Deletes the lead
+   *  itself; the WhatsApp conversation is untouched (its messages just stop
+   *  pointing at a lead), same as the web console. */
+  remove: (id: string) => api.delete<{ ok: true }>(`/leads/${id}`).then((r) => r.data),
 }
