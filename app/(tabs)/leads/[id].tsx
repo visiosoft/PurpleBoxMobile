@@ -132,7 +132,16 @@ export default function LeadDetailScreen() {
           style={{ paddingTop: 46, paddingHorizontal: 16, paddingBottom: 20, borderBottomLeftRadius: RADII.hero - 2, borderBottomRightRadius: RADII.hero - 2 }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <PressableScale onPress={() => router.back()} style={{ width: 38, height: 38, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+            <PressableScale
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back()
+                } else {
+                  router.replace('/leads')
+                }
+              }}
+              style={{ width: 38, height: 38, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}
+            >
               <Ionicons name="chevron-back" size={19} color="#fff" />
             </PressableScale>
             <PressableScale

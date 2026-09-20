@@ -50,7 +50,7 @@ export default function AssignTab() {
           </View>
         }
       />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ flex: 1 }}>
         {isLoading && leads.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={COLORS.purple600} />
@@ -96,7 +96,7 @@ export default function AssignTab() {
             )}
           />
         )}
-      </SafeAreaView>
+      </View>
     </View>
   )
 }

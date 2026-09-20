@@ -5,7 +5,7 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import Constants, { ExecutionEnvironment } from 'expo-constants'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts as useBricolage, BricolageGrotesque_700Bold } from '@expo-google-fonts/bricolage-grotesque'
@@ -161,7 +161,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialWindowMetrics={initialWindowMetrics}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <RouteGuard>

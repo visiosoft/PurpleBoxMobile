@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, memo, useCallback } from 'react'
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useIsFocused } from 'expo-router'
@@ -92,9 +92,10 @@ export default function WhatsAppListScreen() {
   const serverOwner = tab === 'waiting' ? 'waiting' : 'all'
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['wa-conversations', serverOwner, debouncedQ],
-    queryFn: () => whatsappApi.conversations({ owner: serverOwner, q: debouncedQ || undefined, limit: 200 }),
+    queryFn: () => whatsappApi.conversations({ owner: serverOwner, q: debouncedQ || undefined, limit: 100 }),
     refetchInterval: isFocused ? 5_000 : false,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
+    staleTime: 15_000,
   })
 
   const conversations = useMemo(
@@ -104,13 +105,25 @@ export default function WhatsAppListScreen() {
   const counts = data?.ownerCounts
   const tabCount = (key: InboxTab) => (key === 'replied' ? (counts ? counts.all - counts.waiting : undefined) : counts?.[key])
 
-  const openChat = (c: WhatsAppConversation) => {
+  const openChat = useCallback((c: WhatsAppConversation) => {
     markSeen(c.phoneNormalized, c.lastAt).then(() => setSeenMap((m) => ({ ...m, [c.phoneNormalized]: c.lastAt })))
     router.push({
       pathname: '/whatsapp/[phone]',
       params: { phone: c.phoneNormalized, name: displayName(c), leadId: c.lead?._id ?? '' },
     })
-  }
+  }, [router])
+
+  const renderConversationItem = useCallback(
+    ({ item, index }: { item: WhatsAppConversation; index: number }) => (
+      <ConversationRow
+        item={item}
+        index={index}
+        seenMap={seenMap}
+        onOpen={openChat}
+      />
+    ),
+    [seenMap, openChat]
+  )
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
@@ -175,7 +188,7 @@ export default function WhatsAppListScreen() {
           </View>
         </SafeAreaView>
       </View>
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ flex: 1 }}>
 
         {isLoading && conversations.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -203,61 +216,77 @@ export default function WhatsAppListScreen() {
             onRefresh={onManualRefresh}
             refreshing={manualRefreshing}
             contentContainerStyle={{ paddingBottom: 24 }}
-            renderItem={({ item, index }) => {
-              const name = displayName(item)
-              const unread = isUnread(seenMap, item.phoneNormalized, item.lastAt)
-              const waiting = item.waitingSince ? waitedFor(item.waitingSince) : null
-              const av = avatarStyle(index)
-              const leadBadge = item.lead ? statusMeta(item.lead.status) : null
-              return (
-                <PressableScale
-                  onPress={() => openChat(item)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: COLORS.lineSoft }}
-                >
-                  <View style={{ width: 46, height: 46, borderRadius: 16, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: FONTS.display, fontSize: 16, color: av.text }}>{name.slice(0, 1).toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                      <Text
-                        numberOfLines={1}
-                        style={{ fontFamily: unread ? FONTS.bodyBold : FONTS.bodyMedium, fontSize: 14.5, color: COLORS.ink, flexShrink: 1 }}
-                      >
-                        {name}
-                      </Text>
-                      {leadBadge && (
-                        <View style={{ backgroundColor: leadBadge.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, color: leadBadge.text }}>{leadBadge.label}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      {item.lastMessageMine && <Ionicons name="checkmark-done" size={14} color={COLORS.readTick} />}
-                      <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.ink3, flex: 1 }}>
-                        {item.lastMessage}
-                      </Text>
-                      {!item.lead && !item.customer && (
-                        <View style={{ backgroundColor: COLORS.warnTint, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 10, color: COLORS.warnInk }}>Unassigned</Text>
-                        </View>
-                      )}
-                      {unread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.purple600 }} />}
-                    </View>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 10.5, color: unread ? COLORS.purple600 : COLORS.ink4 }}>{timeAgo(item.lastAt)}</Text>
-                    {waiting && (
-                      <View style={{ marginTop: 6, backgroundColor: waiting.bg, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 }}>
-                        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, color: waiting.fg }}>Waiting {waiting.text}</Text>
-                      </View>
-                    )}
-                  </View>
-                </PressableScale>
-              )
-            }}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            renderItem={renderConversationItem}
           />
         )}
-      </SafeAreaView>
+      </View>
     </View>
   )
 }
+
+const ConversationRow = memo(function ConversationRow({
+  item,
+  index,
+  seenMap,
+  onOpen,
+}: {
+  item: WhatsAppConversation
+  index: number
+  seenMap: Record<string, string>
+  onOpen: (c: WhatsAppConversation) => void
+}) {
+  const name = displayName(item)
+  const unread = isUnread(seenMap, item.phoneNormalized, item.lastAt)
+  const waiting = item.waitingSince ? waitedFor(item.waitingSince) : null
+  const av = avatarStyle(index)
+  const leadBadge = item.lead ? statusMeta(item.lead.status) : null
+  return (
+    <PressableScale
+      onPress={() => onOpen(item)}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: COLORS.lineSoft }}
+    >
+      <View style={{ width: 46, height: 46, borderRadius: 16, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontFamily: FONTS.display, fontSize: 16, color: av.text }}>{name.slice(0, 1).toUpperCase()}</Text>
+      </View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+          <Text
+            numberOfLines={1}
+            style={{ fontFamily: unread ? FONTS.bodyBold : FONTS.bodyMedium, fontSize: 14.5, color: COLORS.ink, flexShrink: 1 }}
+          >
+            {name}
+          </Text>
+          {leadBadge && (
+            <View style={{ backgroundColor: leadBadge.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, color: leadBadge.text }}>{leadBadge.label}</Text>
+            </View>
+          )}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {item.lastMessageMine && <Ionicons name="checkmark-done" size={14} color={COLORS.readTick} />}
+          <Text numberOfLines={1} style={{ fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.ink3, flex: 1 }}>
+            {item.lastMessage}
+          </Text>
+          {!item.lead && !item.customer && (
+            <View style={{ backgroundColor: COLORS.warnTint, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 10, color: COLORS.warnInk }}>Unassigned</Text>
+            </View>
+          )}
+          {unread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.purple600 }} />}
+        </View>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 10.5, color: unread ? COLORS.purple600 : COLORS.ink4 }}>{timeAgo(item.lastAt)}</Text>
+        {waiting && (
+          <View style={{ marginTop: 6, backgroundColor: waiting.bg, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 }}>
+            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, color: waiting.fg }}>Waiting {waiting.text}</Text>
+          </View>
+        )}
+      </View>
+    </PressableScale>
+  )
+})

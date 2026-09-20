@@ -64,7 +64,7 @@ export default function AssistantScreen() {
       ])
       if (res.pdfPath) {
         const url = res.pdfPath.startsWith('http') ? res.pdfPath : `${API_BASE_URL.replace(/\/api$/, '')}${res.pdfPath}`
-        Linking.openURL(url).catch(() => {})
+        Linking.openURL(url).catch(() => { })
       }
     },
     onError: (e) => notify('Could not confirm', apiError(e)),
@@ -123,64 +123,64 @@ export default function AssistantScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
       <ScreenHeader title="Assistant" />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
-        {messages.length === 0 ? (
-          <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'flex-end', gap: 10, paddingBottom: 16 }}>
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.brandTint, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Ionicons name="sparkles" size={26} color={COLORS.brand} />
+      <View style={{ flex: 1 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+          {messages.length === 0 ? (
+            <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'flex-end', gap: 10, paddingBottom: 16 }}>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.brandTint, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Ionicons name="sparkles" size={26} color={COLORS.brand} />
+                </View>
+                <Text style={{ fontFamily: FONTS.display, fontSize: 18, color: COLORS.ink, textAlign: 'center' }}>Ask about units, contracts, or leads</Text>
+                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.muted, textAlign: 'center', marginTop: 4 }}>Plain language — it reads the real data.</Text>
               </View>
-              <Text style={{ fontFamily: FONTS.display, fontSize: 18, color: COLORS.ink, textAlign: 'center' }}>Ask about units, contracts, or leads</Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.muted, textAlign: 'center', marginTop: 4 }}>Plain language — it reads the real data.</Text>
+              {EXAMPLE_PROMPTS.map((p) => (
+                <PressableScale key={p} onPress={() => send(p)} style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, padding: 14 }}>
+                  <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: COLORS.ink }}>{p}</Text>
+                </PressableScale>
+              ))}
             </View>
-            {EXAMPLE_PROMPTS.map((p) => (
-              <PressableScale key={p} onPress={() => send(p)} style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, padding: 14 }}>
-                <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: COLORS.ink }}>{p}</Text>
-              </PressableScale>
-            ))}
-          </View>
-        ) : (
-          <FlatList
-            data={[...messages].reverse()}
-            keyExtractor={(m) => m.id}
-            inverted
-            contentContainerStyle={{ padding: 16, gap: 10 }}
-            renderItem={({ item }) => (
-              <ChatBubble msg={item} onOpenLink={openLink} onConfirm={(id) => confirmAction.mutate(id)} onCancel={(id) => cancelAction.mutate(id)} busy={confirmAction.isPending || cancelAction.isPending} />
-            )}
-          />
-        )}
+          ) : (
+            <FlatList
+              data={[...messages].reverse()}
+              keyExtractor={(m) => m.id}
+              inverted
+              contentContainerStyle={{ padding: 16, gap: 10 }}
+              renderItem={({ item }) => (
+                <ChatBubble msg={item} onOpenLink={openLink} onConfirm={(id) => confirmAction.mutate(id)} onCancel={(id) => cancelAction.mutate(id)} busy={confirmAction.isPending || cancelAction.isPending} />
+              )}
+            />
+          )}
 
-        {ask.isPending && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingBottom: 6 }}>
-            <ActivityIndicator size="small" color={COLORS.brand} />
-            <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.muted }}>Thinking…</Text>
-          </View>
-        )}
+          {ask.isPending && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingBottom: 6 }}>
+              <ActivityIndicator size="small" color={COLORS.brand} />
+              <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.muted }}>Thinking…</Text>
+            </View>
+          )}
 
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12 }}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Ask a question…"
-            placeholderTextColor={COLORS.faint}
-            multiline
-            style={{
-              flex: 1, maxHeight: 100, backgroundColor: '#fff', borderRadius: 20,
-              paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
-            }}
-          />
-          <PressableScale
-            onPress={() => send(draft)}
-            disabled={ask.isPending || !draft.trim()}
-            style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: ask.isPending || !draft.trim() ? COLORS.faint : COLORS.brand }}
-          >
-            <Ionicons name="send" size={17} color="#fff" />
-          </PressableScale>
-        </View>
-      </KeyboardAvoidingView>
-      </SafeAreaView>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12 }}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Ask a question…"
+              placeholderTextColor={COLORS.faint}
+              multiline
+              style={{
+                flex: 1, maxHeight: 100, backgroundColor: '#fff', borderRadius: 20,
+                paddingHorizontal: 16, paddingVertical: 10, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink,
+              }}
+            />
+            <PressableScale
+              onPress={() => send(draft)}
+              disabled={ask.isPending || !draft.trim()}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: ask.isPending || !draft.trim() ? COLORS.faint : COLORS.brand }}
+            >
+              <Ionicons name="send" size={17} color="#fff" />
+            </PressableScale>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </View>
   )
 }

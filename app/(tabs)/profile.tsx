@@ -35,8 +35,19 @@ export default function ProfileTab() {
     confirmAction('Sign out', 'You can sign back in any time with the same account.', 'Sign out', () => logout(), { destructive: true })
   }
 
+  async function handleTestNotification() {
+    try {
+      const push = await import('../../src/lib/pushNotifications')
+      const token = await push.registerForPushNotificationsAsync()
+      await push.sendLocalTestNotification()
+      notify('Test Notification Sent', token ? `Push token registered:\n${token.slice(0, 24)}...` : 'Notification triggered locally on device.')
+    } catch {
+      notify('Notifications', 'Testing push notification...')
+    }
+  }
+
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; badge?: string; onPress: () => void }[] = [
-    { key: 'notifications', label: 'Notifications', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : undefined, onPress: () => notify('Notifications', 'Your notification feed is coming soon.') },
+    { key: 'notifications', label: 'Test Notification & Status', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : 'Test', onPress: handleTestNotification },
     { key: 'performance', label: 'My performance', icon: 'trending-up-outline', onPress: () => notify('My performance', 'Performance report coming soon.') },
     ...(isAdmin ? [
       { key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') },
@@ -50,7 +61,7 @@ export default function ProfileTab() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ flex: 1 }}>
         <LinearGradient
           colors={GRADIENT_PRIMARY}
           locations={GRADIENT_PRIMARY_LOCATIONS}
@@ -101,7 +112,7 @@ export default function ProfileTab() {
             PurpleBox CRM · v2.0 · Al Quoz 2, Dubai
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   )
 }

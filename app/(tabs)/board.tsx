@@ -21,7 +21,7 @@ export default function BoardTab() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
       <ScreenHeader title="Lead board" />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ flex: 1 }}>
         {isLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={COLORS.purple600} />
@@ -47,7 +47,7 @@ export default function BoardTab() {
             })}
           </ScrollView>
         )}
-      </SafeAreaView>
+      </View>
     </View>
   )
 }

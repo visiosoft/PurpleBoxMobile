@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { View, Text, FlatList, ActivityIndicator, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { leadApi, type FollowUpLeadRow } from '../../src/lib/leads'
-import { statusMeta, leadDisplayName } from '../../src/lib/leadStatus'
+import { leadDisplayName } from '../../src/lib/leadStatus'
 import { apiError } from '../../src/lib/api'
 import { notify } from '../../src/lib/alert'
 import { COLORS, FONTS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 import ScreenHeader from '../../src/components/ScreenHeader'
+import SwipeableDashboardCard from '../../src/components/SwipeableDashboardCard'
+import FollowUpSheet from '../../src/components/FollowUpSheet'
+import { useDashboardDismissed } from '../../src/lib/dashboardDismissed'
 
 type FuTab = 'today' | 'upcoming' | 'overdue'
 const TABS: { key: FuTab; label: string }[] = [
@@ -24,37 +27,43 @@ const EMPTY_COPY: Record<FuTab, [string, string]> = {
   overdue: ['Nothing overdue 🎉', 'Every customer got a reply in time.'],
 }
 
-function slotTime(iso: string | null): { hh: string; mer: string } {
-  if (!iso) return { hh: '--', mer: '' }
-  const [time, mer] = new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).split(' ')
-  return { hh: time, mer: mer ?? '' }
-}
-function dayLabel(iso: string | null): string {
+function formatTime(iso: string | null): string {
   if (!iso) return ''
-  const d = new Date(iso)
-  const today = new Date()
-  const diffDays = Math.round((d.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / 86400000)
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Tomorrow'
-  if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`
-  return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
+
 function overdueLabel(iso: string | null): string {
-  if (!iso) return ''
+  if (!iso) return 'Overdue'
   const hours = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 36e5))
+  if (hours < 1) return 'Just overdue'
   if (hours < 24) return `${hours}h overdue`
   return `${Math.round(hours / 24)}d overdue`
 }
 
 export default function FollowUpsTab() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<FuTab>('today')
   const [manualRefreshing, setManualRefreshing] = useState(false)
+  const [rescheduleLead, setRescheduleLead] = useState<{ id: string; name: string; current?: string | null } | null>(null)
+  const { dismissedSet, dismiss } = useDashboardDismissed()
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['follow-ups'],
     queryFn: leadApi.followUps,
     staleTime: 30_000,
+  })
+
+  const scheduleFollowUpMutation = useMutation({
+    mutationFn: ({ id, iso }: { id: string; iso: string }) => leadApi.scheduleFollowUp(id, iso),
+    onSuccess: () => {
+      notify('Follow-up scheduled', 'The lead has been rescheduled.')
+      queryClient.invalidateQueries({ queryKey: ['follow-ups'] })
+      setRescheduleLead(null)
+    },
+    onError: (err) => {
+      notify('Could not reschedule', apiError(err))
+    },
   })
 
   const onManualRefresh = async () => {
@@ -67,17 +76,43 @@ export default function FollowUpsTab() {
   }
 
   const counts = { today: data?.today.length ?? 0, upcoming: data?.upcoming.length ?? 0, overdue: data?.overdue.length ?? 0 }
-  const list = data?.[tab] ?? []
+  const rawList = data?.[tab] ?? []
+  const list = rawList.filter((f) => !dismissedSet.has(`fu_${tab}_${f._id}`))
 
-  function openLead(id: string) {
+  const openLead = useCallback((id: string) => {
     router.push(`/leads/${id}`)
-  }
-  function openChat(phone: string, name: string, leadId: string) {
+  }, [router])
+
+  const openChat = useCallback((phone: string, name: string, leadId: string, itemKey?: string) => {
+    if (itemKey) dismiss(itemKey)
     router.push({ pathname: '/whatsapp/[phone]', params: { phone, name, leadId } })
-  }
-  function call(phone: string) {
-    Linking.openURL(`tel:${phone}`).catch(() => notify('Could not start a call'))
-  }
+  }, [router, dismiss])
+
+  const handleReschedule = useCallback((item: FollowUpLeadRow) => {
+    setRescheduleLead({ id: item._id, name: leadDisplayName(item), current: item.followUpAt })
+  }, [])
+
+  const renderItem = useCallback(({ item, index }: { item: FollowUpLeadRow; index: number }) => {
+    const itemKey = `fu_${tab}_${item._id}`
+    const name = leadDisplayName(item)
+    const isOverdue = tab === 'overdue' || (!!item.followUpAt && new Date(item.followUpAt).getTime() < Date.now())
+    return (
+      <SwipeableDashboardCard
+        id={itemKey}
+        index={index}
+        type={isOverdue ? 'followup_overdue' : 'followup_today'}
+        title={name}
+        phone={item.phone}
+        leadStatus={item.status}
+        timeText={isOverdue ? overdueLabel(item.followUpAt) : formatTime(item.followUpAt)}
+        subtitle={isOverdue ? 'Overdue follow-up' : 'Scheduled follow-up'}
+        note="Tap to chat or swipe right / swipe left to reschedule"
+        onChat={() => openChat(item.phone, name, item._id, itemKey)}
+        onReschedule={() => handleReschedule(item)}
+        onOpenDetails={() => openLead(item._id)}
+      />
+    )
+  }, [tab, openChat, handleReschedule, openLead])
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt }}>
@@ -89,7 +124,7 @@ export default function FollowUpsTab() {
           </View>
         }
       />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
           <View style={{ flexDirection: 'row', gap: 4, backgroundColor: COLORS.control, borderRadius: 14, padding: 4 }}>
             {TABS.map((t) => {
@@ -139,50 +174,25 @@ export default function FollowUpsTab() {
             keyExtractor={(f) => f._id}
             onRefresh={onManualRefresh}
             refreshing={manualRefreshing}
-            contentContainerStyle={{ padding: 16, gap: 11 }}
-            renderItem={({ item }) => <FollowUpCard f={item} onOpen={openLead} onChat={openChat} onCall={call} />}
+            contentContainerStyle={{ padding: 16 }}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
+            removeClippedSubviews={true}
+            renderItem={renderItem}
           />
         )}
-      </SafeAreaView>
-    </View>
-  )
-}
+      </View>
 
-function FollowUpCard({
-  f, onOpen, onChat, onCall,
-}: { f: FollowUpLeadRow; onOpen: (id: string) => void; onChat: (phone: string, name: string, leadId: string) => void; onCall: (phone: string) => void }) {
-  const overdue = !!f.followUpAt && new Date(f.followUpAt).getTime() < Date.now()
-  const { hh, mer } = slotTime(f.followUpAt)
-  const meta = statusMeta(f.status)
-  const name = leadDisplayName(f)
-  return (
-    <View style={{ flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: COLORS.line, borderRadius: 20, backgroundColor: '#fff', padding: 14 }}>
-      <View style={{ minWidth: 52, minHeight: 52, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: overdue ? COLORS.dangerTint : COLORS.purple50 }}>
-        <Text style={{ fontFamily: FONTS.display, fontSize: 15, lineHeight: 16, color: overdue ? COLORS.danger : COLORS.purple600, textAlign: 'center' }}>{hh}</Text>
-        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, marginTop: 2, letterSpacing: 0.5, color: overdue ? COLORS.danger : COLORS.purple600 }}>{mer}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-          <PressableScale onPress={() => onOpen(f._id)}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink }}>{name}</Text>
-          </PressableScale>
-          {overdue && (
-            <View style={{ backgroundColor: COLORS.dangerTint, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 }}>
-              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10, color: COLORS.danger }}>{overdueLabel(f.followUpAt)}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={{ marginTop: 4, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink2 }}>{meta.label}</Text>
-        <Text style={{ marginTop: 5, fontFamily: FONTS.body, fontSize: 11.5, color: COLORS.ink4 }}>{dayLabel(f.followUpAt)}</Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 11 }}>
-          <PressableScale onPress={() => onChat(f.phone, name, f._id)} style={{ flex: 1, height: 38, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
-          </PressableScale>
-          <PressableScale onPress={() => onCall(f.phone)} style={{ paddingHorizontal: 14, height: 38, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Call</Text>
-          </PressableScale>
-        </View>
-      </View>
+      {!!rescheduleLead && (
+        <FollowUpSheet
+          visible={!!rescheduleLead}
+          current={rescheduleLead.current}
+          title={`Reschedule: ${rescheduleLead.name}`}
+          onSchedule={(iso) => scheduleFollowUpMutation.mutate({ id: rescheduleLead.id, iso })}
+          onClose={() => setRescheduleLead(null)}
+        />
+      )}
     </View>
   )
 }

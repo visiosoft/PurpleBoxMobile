@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo, useCallback } from 'react'
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -72,9 +72,22 @@ export default function LeadsListScreen() {
   const leads = data?.pages.flatMap((p) => p.data) ?? []
   const total = data?.pages[0]?.total ?? stats?.total ?? 0
 
-  function openChat(lead: Lead) {
+  const openChat = useCallback((lead: Lead) => {
     router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: leadDisplayName(lead), leadId: lead._id } })
-  }
+  }, [router])
+
+  const openLead = useCallback((leadId: string) => {
+    router.push(`/leads/${leadId}`)
+  }, [router])
+
+  const renderLeadCard = useCallback(({ item, index }: { item: Lead; index: number }) => (
+    <MemoizedLeadCard
+      lead={item}
+      index={index}
+      onOpen={() => openLead(item._id)}
+      onChat={() => openChat(item)}
+    />
+  ), [openLead, openChat])
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt }}>
@@ -165,15 +178,12 @@ export default function LeadsListScreen() {
           onEndReachedThreshold={0.4}
           onEndReached={() => { if (hasNextPage) fetchNextPage() }}
           contentContainerStyle={{ padding: 16, gap: 11 }}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews={true}
           ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 16 }} color={COLORS.purple600} /> : null}
-          renderItem={({ item, index }) => (
-            <LeadCard
-              lead={item}
-              index={index}
-              onOpen={() => router.push(`/leads/${item._id}`)}
-              onChat={() => openChat(item)}
-            />
-          )}
+          renderItem={renderLeadCard}
         />
       )}
     </View>
@@ -238,3 +248,5 @@ function LeadCard({
     </View>
   )
 }
+
+const MemoizedLeadCard = memo(LeadCard)

@@ -71,7 +71,7 @@ export default function UnitsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
       <ScreenHeader title="Search Unit" />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
           <View
             style={{
@@ -201,7 +201,7 @@ export default function UnitsScreen() {
         )}
 
         <UnitDetailSheet unitId={selectedUnitId} visible={!!selectedUnitId} onClose={() => setSelectedUnitId(null)} />
-      </SafeAreaView>
+      </View>
     </View>
   )
 }

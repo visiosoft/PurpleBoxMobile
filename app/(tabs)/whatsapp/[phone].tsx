@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import {
   View, Text, TextInput, FlatList, Pressable, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, Image, Linking,
+  KeyboardAvoidingView, Platform, Image, Linking, Animated, PanResponder, Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, Stack, useIsFocused } from 'expo-router'
@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker'
 import {
   useAudioRecorder, useAudioRecorderState, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync,
 } from 'expo-audio'
-import { whatsappApi, messageTemplateApi, type WhatsAppMsg, type MessageTemplate } from '../../../src/lib/whatsapp'
+import { whatsappApi, messageTemplateApi, type WhatsAppMsg, type MessageTemplate, type WhatsAppConversation } from '../../../src/lib/whatsapp'
 import { leadApi, type LeadStatus } from '../../../src/lib/leads'
 import { userApi } from '../../../src/lib/users'
 import { LEAD_STATUS_FLOW, statusMeta } from '../../../src/lib/leadStatus'
@@ -30,6 +30,24 @@ import ContactedNoteSheet from '../../../src/components/ContactedNoteSheet'
 import PressableScale from '../../../src/components/PressableScale'
 
 type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' | 'audio' }
+
+const SCREEN_WIDTH = Dimensions.get('window').width
+const SWIPE_NAV_THRESHOLD = 70
+
+function normalizeDigits(p?: string | null): string {
+  return (p || '').replace(/\D/g, '')
+}
+
+function getConvDisplayName(c: WhatsAppConversation): string {
+  return c.displayName || c.lead?.fullName || c.customer?.fullName || c.phone
+}
+
+function getConvParams(c: WhatsAppConversation) {
+  const cName = getConvDisplayName(c)
+  const cPhone = c.phoneNormalized || c.phone
+  const cLeadId = c.lead?._id || ''
+  return { phone: cPhone, name: cName, leadId: cLeadId }
+}
 
 function bubbleTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -83,7 +101,7 @@ export default function ChatThreadScreen() {
     queryFn: () => whatsappApi.messages(phone, messageLimit),
     enabled: !!phone,
     refetchInterval: isFocused ? 3_000 : false,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   })
   useEffect(() => { if (!messagesFetching) setLoadingMore(false) }, [messagesFetching])
 
@@ -103,6 +121,43 @@ export default function ChatThreadScreen() {
     onSuccess: invalidateLead,
     onError: (e) => notify('Could not schedule follow-up', apiError(e)),
   })
+  // Sending a message IS the follow-up contact — once it goes out, a
+  // due/overdue reminder for this lead no longer reflects reality, so clear
+  // it everywhere (dashboard, Follow-ups tab, badge counts) rather than
+  // leaving it to nag until someone reschedules or dismisses it by hand.
+  const clearDueFollowUp = useMutation({
+    mutationFn: () => leadApi.scheduleFollowUp(leadId!, null),
+    onSuccess: () => {
+      invalidateLead()
+      queryClient.invalidateQueries({ queryKey: ['follow-ups'] })
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] })
+    },
+  })
+  function clearFollowUpIfDue() {
+    if (!leadId || !lead?.followUpAt) return
+    // "Due today" clears too, not just "already past" — a 5pm follow-up
+    // messaged at 10am was still just resolved, it shouldn't keep nagging
+    // for the rest of the day. Anything scheduled for a later day is a
+    // deliberate future reminder and is left alone.
+    const followUpDay = new Date(lead.followUpAt)
+    followUpDay.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (followUpDay.getTime() <= today.getTime()) {
+      clearDueFollowUp.mutate()
+    }
+  }
+  // A brand-new lead is "New" only until someone actually reaches out —
+  // the first WhatsApp message we send them (even just "hi") is that first
+  // outreach, so move it to Contact Attempted automatically instead of
+  // leaving it sitting as New until a rep remembers to flip the status by
+  // hand. Anything past New was already touched, so this only ever fires once.
+  function autoMarkContactAttempted() {
+    if (!leadId || !lead) return
+    if (lead.status === 'new') {
+      changeStatus.mutate({ status: 'contact_attempted' })
+    }
+  }
   const scheduleSiteVisit = useMutation({
     mutationFn: (iso: string) => leadApi.scheduleSiteVisit(leadId!, iso),
     onSuccess: invalidateLead,
@@ -143,6 +198,104 @@ export default function ChatThreadScreen() {
     if (thenScheduleVisit) setSiteVisitOpen(true)
   }
 
+  // Load conversation list to allow swiping to previous/next chats
+  const { data: convData } = useQuery({
+    queryKey: ['wa-conversations-nav'],
+    queryFn: () => whatsappApi.conversations({ limit: 100 }),
+    staleTime: 30_000,
+  })
+
+  const convList = convData?.list ?? []
+  const currentDigits = normalizeDigits(phone)
+
+  const currentIndex = useMemo(() => {
+    if (!convList.length || !phone) return -1
+    return convList.findIndex((c) => {
+      const p1 = normalizeDigits(c.phone)
+      const p2 = normalizeDigits(c.phoneNormalized)
+      return p1 === currentDigits || p2 === currentDigits || c.phone === phone || c.phoneNormalized === phone
+    })
+  }, [convList, phone, currentDigits])
+
+  const prevConv = currentIndex > 0 ? convList[currentIndex - 1] : null
+  const nextConv = currentIndex >= 0 && currentIndex < convList.length - 1 ? convList[currentIndex + 1] : null
+
+  const prevName = prevConv ? getConvDisplayName(prevConv) : ''
+  const nextName = nextConv ? getConvDisplayName(nextConv) : ''
+
+  const goToPrevChat = () => {
+    if (!prevConv) return
+    const target = getConvParams(prevConv)
+    router.replace({ pathname: '/whatsapp/[phone]', params: target })
+  }
+
+  const goToNextChat = () => {
+    if (!nextConv) return
+    const target = getConvParams(nextConv)
+    router.replace({ pathname: '/whatsapp/[phone]', params: target })
+  }
+
+  const panX = useRef(new Animated.Value(0)).current
+  const [swipeDir, setSwipeDir] = useState<'prev' | 'next' | null>(null)
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Capture horizontal swipe when moving sideways more than vertically
+        return (
+          Math.abs(gestureState.dx) > 16 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+        )
+      },
+      onPanResponderMove: (_, gestureState) => {
+        panX.setValue(gestureState.dx)
+        if (gestureState.dx > 25 && prevConv) {
+          setSwipeDir('prev')
+        } else if (gestureState.dx < -25 && nextConv) {
+          setSwipeDir('next')
+        } else {
+          setSwipeDir(null)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > SWIPE_NAV_THRESHOLD && prevConv) {
+          // Swiped Right -> Go to Previous Chat
+          Animated.timing(panX, {
+            toValue: SCREEN_WIDTH,
+            duration: 160,
+            useNativeDriver: true,
+          }).start(() => {
+            panX.setValue(0)
+            setSwipeDir(null)
+            goToPrevChat()
+          })
+        } else if (gestureState.dx < -SWIPE_NAV_THRESHOLD && nextConv) {
+          // Swiped Left -> Go to Next Chat
+          Animated.timing(panX, {
+            toValue: -SCREEN_WIDTH,
+            duration: 160,
+            useNativeDriver: true,
+          }).start(() => {
+            panX.setValue(0)
+            setSwipeDir(null)
+            goToNextChat()
+          })
+        } else {
+          // Reset
+          Animated.spring(panX, {
+            toValue: 0,
+            friction: 7,
+            tension: 40,
+            useNativeDriver: true,
+          }).start(() => {
+            setSwipeDir(null)
+          })
+        }
+      },
+    })
+  ).current
+
   useEffect(() => {
     if (!phone || messages.length === 0) return
     const last = messages[messages.length - 1]
@@ -153,7 +306,7 @@ export default function ChatThreadScreen() {
 
   const sendText = useMutation({
     mutationFn: (body: string) => whatsappApi.send(phone, body),
-    onSuccess: () => { setDraft(''); setSendErr(''); invalidate() },
+    onSuccess: () => { setDraft(''); setSendErr(''); invalidate(); clearFollowUpIfDue(); autoMarkContactAttempted() },
     onError: (e) => setSendErr(apiError(e)),
   })
 
@@ -162,13 +315,13 @@ export default function ChatThreadScreen() {
       setUploadPct(0)
       return whatsappApi.sendMedia(phone, payload, payload.caption, setUploadPct)
     },
-    onSuccess: () => { setDraft(''); setPendingMedia(null); setUploadPct(null); setSendErr(''); invalidate() },
+    onSuccess: () => { setDraft(''); setPendingMedia(null); setUploadPct(null); setSendErr(''); invalidate(); clearFollowUpIfDue(); autoMarkContactAttempted() },
     onError: (e) => { setUploadPct(null); setSendErr(apiError(e)) },
   })
 
   const sendQuickReply = useMutation({
     mutationFn: (templateId: string) => whatsappApi.sendQuickReply(phone, templateId),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate(); clearFollowUpIfDue(); autoMarkContactAttempted() },
     onError: (e) => setSendErr(apiError(e)),
   })
 
@@ -177,7 +330,7 @@ export default function ChatThreadScreen() {
     onSuccess: invalidate,
     onError: (e) => notify('Could not delete', apiError(e)),
   })
-  function confirmDeleteMessage(id: string) {
+  const confirmDeleteMessage = useCallback((id: string) => {
     confirmAction(
       'Delete this message?',
       'WhatsApp gives businesses no way to unsend a message — the customer will still have it on their phone. This only removes it from our own record.',
@@ -185,16 +338,21 @@ export default function ChatThreadScreen() {
       () => deleteMessage.mutate(id),
       { destructive: true },
     )
-  }
+  }, [deleteMessage])
 
   const sending = sendText.isPending || sendMedia.isPending
   const hasMoreHistory = messages.length >= messageLimit
 
-  function loadMoreHistory() {
+  const loadMoreHistory = useCallback(() => {
     if (!hasMoreHistory || loadingMore) return
     setLoadingMore(true)
     setMessageLimit((n) => n + 60)
-  }
+  }, [hasMoreHistory, loadingMore])
+
+  const renderMessageItem = useCallback(
+    ({ item }: { item: WhatsAppMsg }) => <MemoizedMessageBubble msg={item} onDelete={confirmDeleteMessage} />,
+    [confirmDeleteMessage]
+  )
 
   function handleSend() {
     if (sending) return
@@ -264,8 +422,17 @@ export default function ChatThreadScreen() {
 
       <View style={{ backgroundColor: COLORS.purple600 }}>
         <SafeAreaView edges={['top']}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 }}>
-            <PressableScale onPress={() => router.back()} style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8 }}>
+            <PressableScale
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back()
+                } else {
+                  router.replace('/whatsapp')
+                }
+              }}
+              style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}
+            >
               <Ionicons name="chevron-back" size={18} color="#fff" />
             </PressableScale>
             <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
@@ -283,6 +450,38 @@ export default function ChatThreadScreen() {
                 <Ionicons name="sparkles" size={16} color="#fff" />
               </PressableScale>
             )}
+          </View>
+
+          {/* Swipe / Next-Prev Chat Quick Bar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.18)', paddingHorizontal: 12, paddingVertical: 5, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' }}>
+            <PressableScale
+              disabled={!prevConv}
+              onPress={goToPrevChat}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 6, borderRadius: 8, backgroundColor: prevConv ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: prevConv ? 1 : 0.4 }}
+            >
+              <Ionicons name="chevron-back" size={14} color="#fff" />
+              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: '#fff', maxWidth: 90 }}>
+                {prevConv ? prevName : 'First chat'}
+              </Text>
+            </PressableScale>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="swap-horizontal" size={12} color="rgba(255,255,255,0.7)" />
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 10.5, color: 'rgba(255,255,255,0.85)' }}>
+                {currentIndex >= 0 ? `${currentIndex + 1} of ${convList.length}` : 'Swipe to switch'}
+              </Text>
+            </View>
+
+            <PressableScale
+              disabled={!nextConv}
+              onPress={goToNextChat}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 6, borderRadius: 8, backgroundColor: nextConv ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: nextConv ? 1 : 0.4 }}
+            >
+              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyMedium, fontSize: 11, color: '#fff', maxWidth: 90 }}>
+                {nextConv ? nextName : 'Last chat'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color="#fff" />
+            </PressableScale>
           </View>
         </SafeAreaView>
       </View>
@@ -347,35 +546,59 @@ export default function ChatThreadScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
-        {isLoading && messages.length === 0 ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={COLORS.brand} />
-          </View>
-        ) : (
-          <FlatList
-            // The server already returns newest-first (occurredAt: -1), which
-            // is exactly what an inverted list wants — data[0] renders at the
-            // bottom (what you see on open), data[last] at the top (oldest,
-            // reached by scrolling up). Reversing it here was flipping that:
-            // the customer's first message rendered at the bottom instead of
-            // the top.
-            data={messages}
-            keyExtractor={(m) => m._id}
-            inverted
-            contentContainerStyle={{ padding: 12, gap: 8 }}
-            renderItem={({ item }) => <MessageBubble msg={item} onDelete={confirmDeleteMessage} />}
-            // Inverted flips "end" to mean the far side of the data array —
-            // data[last] is the oldest message and renders at the visual
-            // top, so reaching it is exactly "scrolled up for history".
-            onEndReached={loadMoreHistory}
-            onEndReachedThreshold={0.4}
-            ListFooterComponent={
-              loadingMore ? (
-                <ActivityIndicator style={{ paddingVertical: 12 }} color={COLORS.brand} />
-              ) : null
-            }
-          />
-        )}
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={{ flex: 1, transform: [{ translateX: panX }] }}
+        >
+          {/* Visual Swipe Direction Prompts */}
+          {swipeDir === 'prev' && prevConv && (
+            <View style={{ position: 'absolute', top: 12, left: 16, zIndex: 10, backgroundColor: COLORS.success, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 }}>
+              <Ionicons name="arrow-back" size={14} color="#fff" />
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12, color: '#fff' }}>Previous: {prevName}</Text>
+            </View>
+          )}
+
+          {swipeDir === 'next' && nextConv && (
+            <View style={{ position: 'absolute', top: 12, right: 16, zIndex: 10, backgroundColor: COLORS.purple600, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 }}>
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12, color: '#fff' }}>Next: {nextName}</Text>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
+            </View>
+          )}
+
+          {isLoading && messages.length === 0 ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator color={COLORS.brand} />
+            </View>
+          ) : (
+            <FlatList
+              // The server already returns newest-first (occurredAt: -1), which
+              // is exactly what an inverted list wants — data[0] renders at the
+              // bottom (what you see on open), data[last] at the top (oldest,
+              // reached by scrolling up). Reversing it here was flipping that:
+              // the customer's first message rendered at the bottom instead of
+              // the top.
+              data={messages}
+              keyExtractor={(m) => m._id}
+              inverted
+              contentContainerStyle={{ padding: 12, gap: 8 }}
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              renderItem={renderMessageItem}
+              // Inverted flips "end" to mean the far side of the data array —
+              // data[last] is the oldest message and renders at the visual
+              // top, so reaching it is exactly "scrolled up for history".
+              onEndReached={loadMoreHistory}
+              onEndReachedThreshold={0.4}
+              ListFooterComponent={
+                loadingMore ? (
+                  <ActivityIndicator style={{ paddingVertical: 12 }} color={COLORS.brand} />
+                ) : null
+              }
+            />
+          )}
+        </Animated.View>
 
         {!!sendErr && (
           <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.bad, paddingHorizontal: 16, paddingTop: 4 }}>{sendErr}</Text>
@@ -543,7 +766,7 @@ export default function ChatThreadScreen() {
   )
 }
 
-function MessageBubble({ msg, onDelete }: { msg: WhatsAppMsg; onDelete: (id: string) => void }) {
+const MemoizedMessageBubble = memo(function MessageBubble({ msg, onDelete }: { msg: WhatsAppMsg; onDelete: (id: string) => void }) {
   const outbound = msg.direction === 'outbound'
   // Deleting only ever applies to a message we sent, and only once — Meta
   // gives no unsend, so there's nothing left to delete a second time.
@@ -572,4 +795,4 @@ function MessageBubble({ msg, onDelete }: { msg: WhatsAppMsg; onDelete: (id: str
       </Pressable>
     </View>
   )
-}
+})

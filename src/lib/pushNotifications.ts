@@ -97,7 +97,7 @@ async function forgetAndDismiss(leadId: string) {
   const map = await loadIdentifierMap()
   const identifier = map[leadId]
   if (identifier) {
-    await Notifications.dismissNotificationAsync(identifier).catch(() => {})
+    await Notifications.dismissNotificationAsync(identifier).catch(() => { })
   }
   if (identifier !== undefined) {
     delete map[leadId]
@@ -106,7 +106,11 @@ async function forgetAndDismiss(leadId: string) {
 }
 
 function projectId(): string | undefined {
-  return Constants.expoConfig?.extra?.eas?.projectId as string | undefined
+  return (
+    (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
+    (Constants.easConfig?.projectId as string | undefined) ??
+    '34bf79a9-ebe7-4245-a7bc-521baf6481c3'
+  )
 }
 
 /**
@@ -124,9 +128,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     const { status: existing } = await Notifications.getPermissionsAsync()
     let status = existing
     if (status !== 'granted') {
-      status = (await Notifications.requestPermissionsAsync()).status
+      const requested = await Notifications.requestPermissionsAsync()
+      status = requested.status
     }
-    if (status !== 'granted') return null
+    if (status !== 'granted') {
+      console.warn('[Push] Permission not granted, status:', status)
+      return null
+    }
 
     if (Platform.OS === 'android') {
       // High importance so a lead assignment can actually interrupt — the
@@ -140,10 +148,16 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       })
     }
 
+    const pid = projectId()
     const { data: token } = await Notifications.getExpoPushTokenAsync(
-      projectId() ? { projectId: projectId() } : undefined,
+      pid ? { projectId: pid } : undefined,
     )
-    await api.post('/users/push-token', { token }).catch(() => null)
+    if (token) {
+      console.log('[Push] Successfully obtained push token:', token)
+      await api.post('/users/push-token', { token }).catch((err) => {
+        console.warn('[Push] Failed to save push token to server:', err)
+      })
+    }
     return token
   } catch (e) {
     console.warn('[Push] could not register for notifications:', e)
@@ -226,6 +240,41 @@ export function wireNotificationListeners(router: Router): () => void {
   return () => {
     receivedSub.remove()
     responseSub.remove()
+  }
+}
+
+/**
+ * Trigger an immediate test notification to verify OS sound, channel,
+ * and banner presentation directly on device.
+ */
+export async function sendLocalTestNotification(): Promise<void> {
+  if (Platform.OS === 'web') return
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('lead-assignments', {
+        name: 'Lead assignments',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 200, 200],
+        lightColor: '#5B2BC9',
+      })
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'New Lead Assigned',
+        body: 'Lead assigned: Test Lead (+971 50 123 4567) - tap to chat',
+        data: {
+          type: 'lead_assigned',
+          phone: '971501234567',
+          name: 'Test Lead',
+          leadId: '',
+        },
+        sound: true,
+      },
+      trigger: null, // Send immediately
+    })
+  } catch (err) {
+    console.warn('[Push] Failed to send local test notification:', err)
   }
 }
 

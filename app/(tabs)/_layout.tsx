@@ -1,4 +1,5 @@
-import { View, Text } from 'react-native'
+import { View, Text, Platform } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Tabs, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query'
@@ -30,71 +31,85 @@ export default function TabsLayout() {
   const isAdmin = user?.role === 'admin'
   const { waiting } = useNotifications()
   const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: leadApi.stats, staleTime: 30_000 })
+  const insets = useSafeAreaInsets()
+  const bottomInset = insets.bottom
+  const bottomPadding = bottomInset > 0 ? bottomInset : (Platform.OS === 'android' ? 10 : 8)
+  const barHeight = (Platform.OS === 'ios' ? 56 : 62) + bottomPadding
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs
-        initialRouteName={isAdmin ? 'overview' : 'home'}
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: COLORS.purple600,
-          tabBarInactiveTintColor: COLORS.ink4,
-          tabBarLabelStyle: { fontFamily: FONTS.bodyBold, fontSize: 10 },
-          tabBarStyle: {
-            height: 76, paddingTop: 10, paddingBottom: 12,
-            backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: COLORS.line,
-          },
+    <Tabs
+      initialRouteName={isAdmin ? 'overview' : 'home'}
+      screenOptions={{
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: COLORS.purple600,
+        tabBarInactiveTintColor: COLORS.ink4,
+        tabBarLabelStyle: { fontFamily: FONTS.bodyBold, fontSize: 10, marginTop: 2 },
+        tabBarStyle: {
+          height: barHeight,
+          paddingTop: 6,
+          paddingBottom: bottomPadding,
+          backgroundColor: 'rgba(255,255,255,0.96)',
+          borderTopWidth: 1,
+          borderTopColor: COLORS.line,
+          elevation: 8,
+        },
+      }}
+    >
+      {/* Home and Overview are mutually exclusive (never both visible),
+          so their relative order to each other doesn't matter — only
+          their shared position ahead of Leads/WhatsApp does, so whichever
+          one a role sees always leads the bar. */}
+      <Tabs.Screen
+        name="home"
+        options={{ href: isAdmin ? null : undefined, title: 'Home', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
+      />
+      <Tabs.Screen
+        name="overview"
+        options={{ href: isAdmin ? undefined : null, title: 'Overview', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
+      />
+      <Tabs.Screen
+        name="leads"
+        options={{
+          title: 'Leads',
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-outline" badge={stats?.byStatus?.new ?? 0} />,
         }}
-      >
-        {/* Home and Overview are mutually exclusive (never both visible),
-            so their relative order to each other doesn't matter — only
-            their shared position ahead of Leads/WhatsApp does, so whichever
-            one a role sees always leads the bar. */}
-        <Tabs.Screen
-          name="home"
-          options={{ href: isAdmin ? null : undefined, title: 'Home', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
-        />
-        <Tabs.Screen
-          name="overview"
-          options={{ href: isAdmin ? undefined : null, title: 'Overview', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
-        />
-        <Tabs.Screen
-          name="leads"
-          options={{
-            title: 'Leads',
-            tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-outline" badge={stats?.byStatus?.new ?? 0} />,
-          }}
-        />
-        <Tabs.Screen
-          name="whatsapp"
-          listeners={{
-            tabPress: (event) => {
-              event.preventDefault()
-              router.replace('/whatsapp')
-            },
-          }}
-          options={{
-            href: '/whatsapp', title: 'WhatsApp',
-            tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="logo-whatsapp" badge={waiting} />,
-          }}
-        />
-        <Tabs.Screen
-          name="followups"
-          options={{ title: 'Follow-ups', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="time-outline" /> }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="person-circle-outline" /> }}
-        />
-        {/* Admin tools that used to have their own tab — five tabs is the
-            budget, so Board and Assign moved to Profile rows instead,
-            the same way Search Unit and Assistant already live there. */}
-        <Tabs.Screen name="board" options={{ href: null }} />
-        <Tabs.Screen name="assign" options={{ href: null }} />
-        <Tabs.Screen name="units" options={{ href: null }} />
-        <Tabs.Screen name="assistant" options={{ href: null }} />
-      </Tabs>
-    </View>
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault()
+            router.replace('/leads')
+          },
+        })}
+      />
+      <Tabs.Screen
+        name="whatsapp"
+        options={{
+          title: 'WhatsApp',
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="logo-whatsapp" badge={waiting} />,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault()
+            router.replace('/whatsapp')
+          },
+        })}
+      />
+      <Tabs.Screen
+        name="followups"
+        options={{ title: 'Follow-ups', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="time-outline" /> }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="person-circle-outline" /> }}
+      />
+      {/* Admin tools that used to have their own tab — five tabs is the
+          budget, so Board and Assign moved to Profile rows instead,
+          the same way Search Unit and Assistant already live there. */}
+      <Tabs.Screen name="board" options={{ href: null }} />
+      <Tabs.Screen name="assign" options={{ href: null }} />
+      <Tabs.Screen name="units" options={{ href: null }} />
+      <Tabs.Screen name="assistant" options={{ href: null }} />
+    </Tabs>
   )
 }
 
@@ -103,8 +118,8 @@ export default function TabsLayout() {
  *  no slot for, so it's built into the icon itself. */
 function TabIcon({ focused, name, badge }: { focused: boolean; name: keyof typeof Ionicons.glyphMap; badge?: number }) {
   return (
-    <View style={{ alignItems: 'center', width: 40 }}>
-      <View style={{ height: 3, width: 26, borderRadius: 2, overflow: 'hidden', marginBottom: 5 }}>
+    <View style={{ alignItems: 'center', width: 40, justifyContent: 'center' }}>
+      <View style={{ height: 3, width: 24, borderRadius: 2, overflow: 'hidden', marginBottom: 3 }}>
         {focused && <LinearGradient colors={GRADIENT_PRIMARY} locations={GRADIENT_PRIMARY_LOCATIONS} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />}
       </View>
       <View>
