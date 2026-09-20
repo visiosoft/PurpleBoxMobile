@@ -23,9 +23,49 @@ export type AssistantAskResponse = {
   grounded: boolean
   pending?: AssistantPending | null
   links?: AssistantLink[]
+  card?: AssistantCard | null
 }
 
 export type AssistantCapabilities = { enabled: boolean; allowed: boolean; tools: string[] }
+
+/** Structured data for the couple of answers worth a real layout instead of
+ *  a sentence — built server-side from the actual tool result (see
+ *  services/assistant/index.js's CARD_TOOLS), never invented by the model. */
+export type InventoryCardData = {
+  count: number
+  period: string | { from: string; to: string }
+  bySize: Record<string, number>
+  units: { unitNumber: string; floor: string; sizeSqf: number; monthlyPrice: number; status: string }[]
+  truncated?: boolean
+}
+export type ContactsCardData = {
+  matches: number
+  people: {
+    kind: 'customer' | 'lead'
+    name: string
+    phone?: string
+    email?: string
+    status?: string
+    owner?: string | null
+    since?: string | null
+    storageSizeSqf?: number | null
+    contracts?: { contractNo: string; status: string; unit?: string; sizeSqf?: number; start?: string; end?: string; monthly?: number }[]
+  }[]
+}
+export type PriceCardData = {
+  unit: { unitNumber: string; floor: string; sizeSqf: number; monthlyPrice: number }
+  period: { startDate: string; endDate: string; weeks: number }
+  weeklyRate: number
+  discountPct: number
+  lines: { title: string; qty?: number; rate?: number; amount: number; taxable?: boolean }[]
+  total: number
+  vatAmount: number
+  note?: string
+}
+export type AssistantCard =
+  | { type: 'inventory'; data: InventoryCardData }
+  | { type: 'contacts'; data: ContactsCardData }
+  | { type: 'price'; data: PriceCardData }
 
 export const assistantApi = {
   capabilities: () => api.get<AssistantCapabilities>('/assistant/capabilities').then((r) => r.data),
