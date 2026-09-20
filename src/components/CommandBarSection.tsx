@@ -1,23 +1,14 @@
 import { useState, useImperativeHandle, forwardRef, type ReactNode, type Ref } from 'react'
-import { View, Text, TextInput, ScrollView, ActivityIndicator, Linking } from 'react-native'
+import { View, Text, TextInput, ScrollView, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useMutation } from '@tanstack/react-query'
-import {
-  useAudioRecorder, useAudioRecorderState, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync,
-} from 'expo-audio'
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition'
 import { COLORS, FONTS, SHADOWS } from '../lib/theme'
 import PressableScale from './PressableScale'
 import AssistantResultCard from './AssistantResultCard'
 import { assistantApi, type AssistantAskResponse, type AssistantMessage } from '../lib/assistant'
 import { apiError, API_BASE_URL } from '../lib/api'
 import { notify } from '../lib/alert'
-
-function formatRecordingTime(ms: number): string {
-  const total = Math.floor(ms / 1000)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
 
 /**
  * BayOps' command bar, as one self-contained piece — everywhere it's used
@@ -38,9 +29,7 @@ function CommandBarSection(
   const [asked, setAsked] = useState('')
   const [history, setHistory] = useState<AssistantMessage[]>([])
   const [result, setResult] = useState<AssistantAskResponse | null>(null)
-  const [transcribing, setTranscribing] = useState(false)
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
-  const recorderState = useAudioRecorderState(recorder, 200)
+  const [recognizing, setRecognizing] = useState(false)
 
   const ask = useMutation({
     mutationFn: (question: string) => assistantApi.ask(question, history),
@@ -91,120 +80,113 @@ function CommandBarSection(
 
   useImperativeHandle(ref, () => ({ runCommand }), [runCommand])
 
+  // On-device speech recognition (not a record-then-upload round trip) —
+  // the transcript streams into `draft` as interim results arrive, so the
+  // input visibly fills in while speaking, the same way typing would. It
+  // never runs on its own: stopping just leaves the text sitting there to
+  // read, edit or clear, exactly like anything typed by hand.
+  useSpeechRecognitionEvent('start', () => setRecognizing(true))
+  useSpeechRecognitionEvent('end', () => setRecognizing(false))
+  useSpeechRecognitionEvent('result', (event) => {
+    const text = event.results[0]?.transcript
+    if (text != null) setDraft(text)
+  })
+  useSpeechRecognitionEvent('error', (event) => {
+    if (event.error === 'no-speech' || event.error === 'aborted') return
+    notify("Didn't catch that", event.message || 'Try again, or type it instead.')
+  })
+
   async function startVoiceCommand() {
-    const perm = await requestRecordingPermissionsAsync()
-    if (!perm.granted) { notify('Microphone access needed', 'Allow microphone access to speak a command.'); return }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
-    await recorder.prepareToRecordAsync()
-    recorder.record()
+    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync()
+    if (!perm.granted) { notify('Microphone access needed', 'Allow microphone and speech recognition access to speak a command.'); return }
+    setDraft('')
+    ExpoSpeechRecognitionModule.start({
+      lang: 'en-US',
+      interimResults: true,
+      // Avoids Android's own start/stop beep (a hardcoded SpeechRecognizer
+      // behavior, not something this app can silence otherwise) and keeps
+      // listening through a brief pause mid-sentence instead of cutting off.
+      continuous: true,
+    })
   }
 
-  async function stopVoiceCommand(send: boolean) {
-    await recorder.stop()
-    const uri = recorder.uri
-    if (!send || !uri) return
-    setTranscribing(true)
-    try {
-      const text = await assistantApi.transcribe(uri)
-      if (!text) { notify("Didn't catch that", 'Try again, or type it instead.'); return }
-      // Lands in the input rather than running immediately — the rep sees
-      // exactly what was heard and can fix a mis-transcribed word or just
-      // cancel, the same way a typed command can be edited before sending.
-      setDraft(text)
-    } catch (e) {
-      notify('Could not transcribe', apiError(e))
-    } finally {
-      setTranscribing(false)
-    }
+  function stopVoiceCommand() {
+    ExpoSpeechRecognitionModule.stop()
   }
 
   return (
     <>
-      {recorderState.isRecording ? (
+      {/* One persistent bar, typed or spoken — while listening, the
+          transcript fills the same box live instead of hiding behind a
+          separate "Listening…" state, so what's being heard is always the
+          thing on screen, not something to find out only after stopping. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          minHeight: 48,
+          borderRadius: 22,
+          backgroundColor: '#fff',
+          borderWidth: 1,
+          borderColor: recognizing ? COLORS.danger : COLORS.line,
+          paddingLeft: 6,
+          paddingRight: 6,
+          paddingVertical: 6,
+          marginBottom: 10,
+          ...SHADOWS.card,
+        }}
+      >
         <View
           style={{
-            flexDirection: 'row', alignItems: 'center', gap: 10, height: 48,
-            borderRadius: 999, backgroundColor: '#fff', paddingHorizontal: 8, marginBottom: 10, ...SHADOWS.card,
-          }}
-        >
-          <PressableScale
-            onPress={() => stopVoiceCommand(false)}
-            style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.control, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
-          </PressableScale>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: COLORS.danger }} />
-            <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13.5, color: COLORS.ink, fontVariant: ['tabular-nums'] }}>
-              {formatRecordingTime(recorderState.durationMillis)}
-            </Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.ink3 }}>Listening…</Text>
-          </View>
-          <PressableScale
-            onPress={() => stopVoiceCommand(true)}
-            style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Ionicons name="checkmark" size={18} color="#fff" />
-          </PressableScale>
-        </View>
-      ) : (
-        <View
-          style={{
-            flexDirection: 'row',
+            width: 34,
+            height: 34,
+            borderRadius: 17,
+            backgroundColor: recognizing ? COLORS.danger : COLORS.brand,
             alignItems: 'center',
-            height: 48,
-            borderRadius: 999,
-            backgroundColor: '#fff',
-            borderWidth: 1,
-            borderColor: COLORS.line,
-            paddingLeft: 6,
-            paddingRight: 6,
-            marginBottom: 10,
-            ...SHADOWS.card,
+            justifyContent: 'center',
+            marginRight: 8,
+            marginBottom: 2,
           }}
         >
-          <View
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              backgroundColor: COLORS.brand,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 8,
-            }}
-          >
-            {transcribing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={16} color="#fff" />}
-          </View>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            onSubmitEditing={() => runCommand(draft)}
-            placeholder={transcribing ? 'Listening to that…' : 'Ask BayOps anything…'}
-            placeholderTextColor={COLORS.faint}
-            returnKeyType="send"
-            editable={!transcribing}
-            style={{ flex: 1, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink }}
-          />
-          {draft.trim() ? (
-            <PressableScale
-              onPress={() => runCommand(draft)}
-              disabled={ask.isPending}
-              style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brand }}
-            >
-              <Ionicons name="arrow-up" size={17} color="#fff" />
-            </PressableScale>
-          ) : (
-            <PressableScale
-              onPress={startVoiceCommand}
-              disabled={transcribing}
-              style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.control }}
-            >
-              <Ionicons name="mic" size={17} color={COLORS.brandDark} />
-            </PressableScale>
-          )}
+          <Ionicons name={recognizing ? 'mic' : 'sparkles'} size={16} color="#fff" />
         </View>
-      )}
+        {/* Multiline and tall enough to actually read a spoken sentence back
+            — a single clipped line was the whole complaint: you could not
+            see what it heard, only guess from what fit. */}
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={() => runCommand(draft)}
+          placeholder={recognizing ? 'Listening…' : 'Ask BayOps anything…'}
+          placeholderTextColor={COLORS.faint}
+          returnKeyType="send"
+          multiline
+          style={{ flex: 1, maxHeight: 140, paddingVertical: 6, fontFamily: FONTS.body, fontSize: 14.5, lineHeight: 20, color: COLORS.ink }}
+        />
+        {recognizing ? (
+          <PressableScale
+            onPress={stopVoiceCommand}
+            style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.danger, marginBottom: 2 }}
+          >
+            <Ionicons name="stop" size={15} color="#fff" />
+          </PressableScale>
+        ) : draft.trim() ? (
+          <PressableScale
+            onPress={() => runCommand(draft)}
+            disabled={ask.isPending}
+            style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brand, marginBottom: 2 }}
+          >
+            <Ionicons name="arrow-up" size={17} color="#fff" />
+          </PressableScale>
+        ) : (
+          <PressableScale
+            onPress={startVoiceCommand}
+            style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.control, marginBottom: 2 }}
+          >
+            <Ionicons name="mic" size={17} color={COLORS.brandDark} />
+          </PressableScale>
+        )}
+      </View>
 
       {mode === 'results' ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>

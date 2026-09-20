@@ -44,6 +44,14 @@
       "expo-audio",
       "expo-video",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "PurpleBox needs your microphone to hear a spoken BayOps command.",
+          "speechRecognitionPermission": "PurpleBox needs speech recognition to turn a spoken BayOps command into text.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "PurpleBox needs access to your photos to attach them to WhatsApp messages.",
