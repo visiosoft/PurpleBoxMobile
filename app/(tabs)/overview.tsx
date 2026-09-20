@@ -1,11 +1,15 @@
+import { useRef } from 'react'
 import { View, Text, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../src/lib/auth'
 import { leadApi } from '../../src/lib/leads'
+import { assistantApi } from '../../src/lib/assistant'
 import { COLORS, FONTS, GRADIENT_ADMIN, GRADIENT_ADMIN_LOCATIONS, RADII, SHADOWS } from '../../src/lib/theme'
-import CommandBarSection from '../../src/components/CommandBarSection'
+import PressableScale from '../../src/components/PressableScale'
+import CommandBarSection, { type CommandBarHandle } from '../../src/components/CommandBarSection'
 
 /**
  * Admin's Sales overview — placeholder for Phase 6 (team roster, per-rep
@@ -14,7 +18,13 @@ import CommandBarSection from '../../src/components/CommandBarSection'
  */
 export default function OverviewTab() {
   const { user } = useAuth()
+  const commandBarRef = useRef<CommandBarHandle>(null)
   const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: leadApi.stats, staleTime: 30_000 })
+  const { data: insight, isLoading: insightLoading } = useQuery({
+    queryKey: ['admin-insight'],
+    queryFn: assistantApi.adminInsight,
+    staleTime: 5 * 60_000,
+  })
 
   const total = stats?.total ?? 0
   const won = stats?.byStatus?.won ?? 0
@@ -47,7 +57,7 @@ export default function OverviewTab() {
       </LinearGradient>
 
       <View style={{ flex: 1, marginTop: -24, paddingHorizontal: 16, paddingTop: 8 }}>
-        <CommandBarSection>
+        <CommandBarSection ref={commandBarRef}>
           <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {tiles.map((t) => (
@@ -57,6 +67,33 @@ export default function OverviewTab() {
                 </View>
               ))}
             </View>
+
+            {/* AI insight — grounded in real figures computed server-side
+                (server/src/services/assistant/adminInsight.js); the model
+                only picks which one matters most and phrases it. */}
+            {!insightLoading && insight && (
+              <View style={{ marginTop: 14, padding: 18, borderRadius: RADII.card, backgroundColor: COLORS.ink, overflow: 'hidden' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Ionicons name="sparkles" size={13} color={COLORS.brandTint} />
+                  <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: COLORS.brandTint }}>
+                    AI insight
+                  </Text>
+                </View>
+                <Text style={{ fontFamily: FONTS.display, fontSize: 20, letterSpacing: -0.3, color: '#fff' }}>{insight.headline}</Text>
+                <Text style={{ marginTop: 6, fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,255,255,0.78)' }}>
+                  {insight.message}
+                </Text>
+                {!!insight.ctaLabel && (
+                  <PressableScale
+                    onPress={() => commandBarRef.current?.runCommand(insight.ctaQuery || insight.ctaLabel!)}
+                    style={{ marginTop: 14, alignSelf: 'flex-start', backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 16, height: 38, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+                  >
+                    <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13, color: COLORS.ink }}>{insight.ctaLabel}</Text>
+                    <Ionicons name="arrow-forward" size={14} color={COLORS.ink} />
+                  </PressableScale>
+                )}
+              </View>
+            )}
 
             <View style={{ marginTop: 20, padding: 18, borderRadius: RADII.card, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center' }}>
               <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.ink3, textAlign: 'center', lineHeight: 19 }}>

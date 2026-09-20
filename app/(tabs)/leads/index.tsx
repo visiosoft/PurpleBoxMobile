@@ -1,5 +1,5 @@
-import { useEffect, useState, memo, useCallback } from 'react'
-import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from 'react-native'
+import { useEffect, useState, useMemo, memo, useCallback } from 'react'
+import { View, Text, TextInput, FlatList, SectionList, Pressable, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -28,6 +28,23 @@ function lastActivityOf(lead: Lead): string {
   const latest = t && t.length ? t[t.length - 1] : null
   if (latest) return latest.text
   return lead.createdAt ? `Added ${timeAgo(lead.createdAt)}` : 'No activity yet'
+}
+
+/** Today / Yesterday / Older — the list already arrives newest-first
+ *  (server sorts by leadDateTime desc), so this is a straight bucket pass,
+ *  not a re-sort. Empty buckets are dropped rather than shown with nothing
+ *  under them. */
+function groupLeadsByDay(leads: Lead[]): { title: string; data: Lead[] }[] {
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const today = startOfDay(new Date())
+  const yesterday = today - 86_400_000
+  const buckets: Record<string, Lead[]> = { Today: [], Yesterday: [], Older: [] }
+  for (const lead of leads) {
+    const at = startOfDay(new Date(lead.leadDateTime))
+    const key = at === today ? 'Today' : at === yesterday ? 'Yesterday' : 'Older'
+    buckets[key].push(lead)
+  }
+  return ['Today', 'Yesterday', 'Older'].filter((k) => buckets[k].length).map((k) => ({ title: k, data: buckets[k] }))
 }
 
 function followUpLabel(lead: Lead): { text: string; overdue: boolean } {
@@ -74,18 +91,24 @@ export default function LeadsListScreen() {
 
   const { data: stats } = useQuery({ queryKey: ['lead-stats'], queryFn: leadApi.stats, staleTime: 30_000 })
 
+  // 30 at a time rather than everything at once — with 1000+ leads on an
+  // admin account, fetching and rendering the lot up front is exactly what
+  // was making the page feel slow. Scrolling near the bottom loads the next
+  // 30 the same way; nothing changes about how that already worked here.
+  const PAGE_SIZE = 30
   const {
     data, isLoading, isError, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: ['leads', status, debouncedQ],
     queryFn: ({ pageParam }) =>
-      leadApi.list({ status: status === 'all' ? undefined : status, search: debouncedQ || undefined, page: pageParam, limit: 25 }),
+      leadApi.list({ status: status === 'all' ? undefined : status, search: debouncedQ || undefined, page: pageParam, limit: PAGE_SIZE }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page < last.pages ? last.page + 1 : undefined),
   })
 
   const leads = data?.pages.flatMap((p) => p.data) ?? []
   const total = data?.pages[0]?.total ?? stats?.total ?? 0
+  const sections = useMemo(() => groupLeadsByDay(leads), [leads])
 
   const openChat = useCallback((lead: Lead) => {
     router.push({ pathname: '/whatsapp/[phone]', params: { phone: lead.phoneNormalized, name: leadDisplayName(lead), leadId: lead._id } })
@@ -190,9 +213,10 @@ export default function LeadsListScreen() {
           <Text style={{ marginTop: 6, fontFamily: FONTS.body, fontSize: 13, color: COLORS.ink3, textAlign: 'center' }}>New leads assigned to you will appear here.</Text>
         </View>
       ) : (
-        <FlatList
-          data={leads}
+        <SectionList
+          sections={sections}
           keyExtractor={(l) => l._id}
+          stickySectionHeadersEnabled
           onRefresh={onManualRefresh}
           refreshing={manualRefreshing}
           onEndReachedThreshold={0.4}
@@ -202,6 +226,13 @@ export default function LeadsListScreen() {
           maxToRenderPerBatch={8}
           windowSize={5}
           removeClippedSubviews={true}
+          renderSectionHeader={({ section }) => (
+            <View style={{ paddingVertical: 8, backgroundColor: COLORS.surfaceAlt }}>
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, letterSpacing: 0.4, textTransform: 'uppercase', color: COLORS.ink3 }}>
+                {section.title}
+              </Text>
+            </View>
+          )}
           ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 16 }} color={COLORS.purple600} /> : null}
           renderItem={renderLeadCard}
         />

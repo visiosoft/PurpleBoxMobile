@@ -28,6 +28,18 @@ export type AssistantAskResponse = {
 
 export type AssistantCapabilities = { enabled: boolean; allowed: boolean; tools: string[] }
 
+/** The Overview screen's "AI insight" card — see
+ *  server/src/services/assistant/adminInsight.js. `facts` are the real
+ *  numbers the headline/message are grounded in, for anyone who wants to
+ *  double-check rather than just trust the sentence. */
+export type AdminInsight = {
+  headline: string
+  message: string
+  ctaLabel: string | null
+  ctaQuery: string | null
+  facts: Record<string, unknown>
+}
+
 /** Structured data for the couple of answers worth a real layout instead of
  *  a sentence — built server-side from the actual tool result (see
  *  services/assistant/index.js's CARD_TOOLS), never invented by the model. */
@@ -74,6 +86,7 @@ export const assistantApi = {
   confirm: (id: string) =>
     api.post<{ ok: boolean; message: string; pdfPath?: string }>('/assistant/confirm', { id }).then((r) => r.data),
   cancel: (id: string) => api.post<{ ok: true; message: string }>('/assistant/cancel', { id }).then((r) => r.data),
+  adminInsight: () => api.get<AdminInsight>('/assistant/admin-insight').then((r) => r.data),
   /** `uri` is a local recording (e.g. from expo-audio) — sent the same
    *  multipart way whatsapp.ts's sendMedia sends a voice note, just to a
    *  different endpoint. Comes back as plain text; the caller runs it
