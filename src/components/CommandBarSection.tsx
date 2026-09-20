@@ -107,7 +107,10 @@ function CommandBarSection(
     try {
       const text = await assistantApi.transcribe(uri)
       if (!text) { notify("Didn't catch that", 'Try again, or type it instead.'); return }
-      runCommand(text)
+      // Lands in the input rather than running immediately — the rep sees
+      // exactly what was heard and can fix a mis-transcribed word or just
+      // cancel, the same way a typed command can be edited before sending.
+      setDraft(text)
     } catch (e) {
       notify('Could not transcribe', apiError(e))
     } finally {
