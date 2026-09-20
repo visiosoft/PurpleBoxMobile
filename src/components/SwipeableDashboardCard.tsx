@@ -1,12 +1,14 @@
-import React, { useRef, useState, memo } from 'react'
+import React, { useRef, useState, useEffect, memo } from 'react'
 import {
     View,
     Text,
+    TextInput,
     Animated,
     PanResponder,
     Dimensions,
     StyleSheet,
     TouchableOpacity,
+    ActivityIndicator,
     type GestureResponderEvent,
     type PanResponderGestureState,
 } from 'react-native'
@@ -36,6 +38,19 @@ export interface DashboardCardProps {
     onChat: () => void
     onReschedule: () => void
     onOpenDetails?: () => void
+    /** BayOps' "exactly one tile expanded" idea — everything below is
+     *  additive and only shows up when expanded, so the existing
+     *  collapsed card (tap to chat, swipe for the shortcuts) is untouched. */
+    expanded?: boolean
+    onToggleExpand?: () => void
+    whyNow?: string
+    suggestedMessage?: string
+    sendingMessage?: boolean
+    onSendSuggested?: (text: string) => void
+    aiValue?: string
+    onChangeAi?: (value: string) => void
+    onSubmitAi?: () => void
+    aiBusy?: boolean
 }
 
 function SwipeableDashboardCard({
@@ -54,7 +69,26 @@ function SwipeableDashboardCard({
     onChat,
     onReschedule,
     onOpenDetails,
+    expanded = false,
+    onToggleExpand,
+    whyNow,
+    suggestedMessage,
+    sendingMessage,
+    onSendSuggested,
+    aiValue = '',
+    onChangeAi,
+    onSubmitAi,
+    aiBusy,
 }: DashboardCardProps) {
+    const [suggestionDraft, setSuggestionDraft] = useState(suggestedMessage || '')
+    const [editingSuggestion, setEditingSuggestion] = useState(false)
+    const firstName = title.split(' ')[0] || title
+
+    // Follows a freshly (re)computed suggestion, but only while the rep
+    // hasn't started editing it themselves — their own edit always wins.
+    useEffect(() => {
+        if (!editingSuggestion) setSuggestionDraft(suggestedMessage || '')
+    }, [suggestedMessage, editingSuggestion])
     const pan = useRef(new Animated.Value(0)).current
     const cardScale = useRef(new Animated.Value(1)).current
     const cardOpacity = useRef(new Animated.Value(1)).current
@@ -288,6 +322,12 @@ function SwipeableDashboardCard({
                                 </Text>
                             </View>
                         ) : null}
+
+                        {!!onToggleExpand && (
+                            <PressableScale onPress={onToggleExpand} style={styles.expandToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.ink3} />
+                            </PressableScale>
+                        )}
                     </View>
 
                     {/* Main Lead / Reminder Info */}
@@ -388,6 +428,68 @@ function SwipeableDashboardCard({
                             </PressableScale>
                         )}
                     </View>
+
+                    {expanded && (whyNow || suggestedMessage !== undefined || onSubmitAi) && (
+                        <View style={styles.expandedSection}>
+                            {!!whyNow && (
+                                <View style={styles.whyNowBox}>
+                                    <Text style={styles.whyNowLabel}>WHY NOW</Text>
+                                    <Text style={styles.whyNowText}>{whyNow}</Text>
+                                </View>
+                            )}
+
+                            {suggestedMessage !== undefined && (
+                                <View style={styles.suggestBox}>
+                                    <Text style={styles.suggestLabel}>+ SUGGESTED · WHATSAPP</Text>
+                                    {editingSuggestion ? (
+                                        <TextInput
+                                            value={suggestionDraft}
+                                            onChangeText={setSuggestionDraft}
+                                            multiline
+                                            style={styles.suggestInput}
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <Text style={styles.suggestText}>{suggestionDraft}</Text>
+                                    )}
+                                    <View style={styles.suggestActions}>
+                                        <PressableScale
+                                            disabled={sendingMessage || !suggestionDraft.trim()}
+                                            onPress={() => onSendSuggested?.(suggestionDraft)}
+                                            style={styles.sendButton}
+                                        >
+                                            {sendingMessage ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.sendButtonText}>Send</Text>}
+                                        </PressableScale>
+                                        <PressableScale onPress={() => setEditingSuggestion((v) => !v)} style={styles.editButton}>
+                                            <Text style={styles.editButtonText}>{editingSuggestion ? 'Done' : 'Edit'}</Text>
+                                        </PressableScale>
+                                    </View>
+                                </View>
+                            )}
+
+                            {!!onSubmitAi && (
+                                <View style={styles.aiFieldRow}>
+                                    <Ionicons name="sparkles" size={13} color={COLORS.brandDark} />
+                                    <TextInput
+                                        value={aiValue}
+                                        onChangeText={onChangeAi}
+                                        onSubmitEditing={onSubmitAi}
+                                        placeholder={`Tell AI what you want to do with ${firstName}…`}
+                                        placeholderTextColor={COLORS.ink3}
+                                        editable={!aiBusy}
+                                        style={styles.aiFieldInput}
+                                    />
+                                    {aiBusy ? (
+                                        <ActivityIndicator size="small" color={COLORS.brandDark} />
+                                    ) : (
+                                        <PressableScale onPress={onSubmitAi} disabled={!aiValue?.trim()}>
+                                            <Ionicons name="arrow-up-circle" size={22} color={aiValue?.trim() ? COLORS.brandDark : COLORS.ink3} />
+                                        </PressableScale>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    )}
                 </Animated.View>
             </View>
         </Animated.View>
@@ -640,5 +742,112 @@ const styles = StyleSheet.create({
         borderColor: COLORS.line,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    expandToggle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    expandedSection: {
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.line,
+        gap: 10,
+    },
+    whyNowBox: {
+        backgroundColor: COLORS.surfaceAlt,
+        borderRadius: 10,
+        padding: 10,
+    },
+    whyNowLabel: {
+        fontFamily: FONTS.bodyBold,
+        fontSize: 9.5,
+        letterSpacing: 0.4,
+        color: COLORS.ink3,
+        marginBottom: 3,
+    },
+    whyNowText: {
+        fontFamily: FONTS.body,
+        fontSize: 12,
+        lineHeight: 16,
+        color: COLORS.ink2,
+    },
+    suggestBox: {
+        backgroundColor: COLORS.brandTint,
+        borderRadius: 10,
+        padding: 10,
+    },
+    suggestLabel: {
+        fontFamily: FONTS.bodyBold,
+        fontSize: 9.5,
+        letterSpacing: 0.4,
+        color: COLORS.brandDark,
+        marginBottom: 4,
+    },
+    suggestText: {
+        fontFamily: FONTS.body,
+        fontSize: 12.5,
+        lineHeight: 17,
+        color: COLORS.ink,
+    },
+    suggestInput: {
+        fontFamily: FONTS.body,
+        fontSize: 12.5,
+        lineHeight: 17,
+        color: COLORS.ink,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 8,
+        minHeight: 60,
+        textAlignVertical: 'top',
+    },
+    suggestActions: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    sendButton: {
+        flex: 1,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: COLORS.brand,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sendButtonText: {
+        fontFamily: FONTS.bodyBold,
+        fontSize: 12,
+        color: '#fff',
+    },
+    editButton: {
+        flex: 1,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    editButtonText: {
+        fontFamily: FONTS.bodyBold,
+        fontSize: 12,
+        color: COLORS.ink3,
+    },
+    aiFieldRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: COLORS.brandTint,
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        height: 40,
+    },
+    aiFieldInput: {
+        flex: 1,
+        fontFamily: FONTS.body,
+        fontSize: 12.5,
+        color: COLORS.ink,
     },
 })

@@ -447,8 +447,8 @@ export default function HomeTab() {
   }
 
   const handleOpenDetails = useCallback((leadId: string) => {
-    handleOpenLead(leadId)
-  }, [])
+    router.push(`/leads/${leadId}`)
+  }, [router])
 
   const handleReschedule = useCallback((item: DashboardFeedItem) => {
     setRescheduleLead({
@@ -458,26 +458,100 @@ export default function HomeTab() {
     })
   }, [])
 
+  // ── One expanded tile at a time, BayOps-style — everything below is
+  // additive to the existing collapsed card. Defaults to the top of the
+  // priority-sorted feed once it loads.
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [tileAiValue, setTileAiValue] = useState('')
+  const activeExpandedId = expandedId ?? filteredFeedItems[0]?.id ?? null
+
+  function toggleExpand(id: string) {
+    setExpandedId((current) => {
+      const active = current ?? filteredFeedItems[0]?.id ?? null
+      return active === id ? '__none__' : id
+    })
+    setTileAiValue('')
+  }
+
+  // A plain-English reason built from the same data already on screen — not
+  // AI-written, so it can never say something the data doesn't support.
+  function whyNowFor(item: DashboardFeedItem): string {
+    switch (item.type) {
+      case 'new_lead':
+        return `New enquiry, not yet contacted${item.note ? ` — ${item.note}` : ''}.`
+      case 'followup_overdue':
+        return `Follow-up is ${item.timeText.toLowerCase()} and nothing has gone out since.`
+      case 'followup_today':
+        return "Today's follow-up — the customer is expecting to hear from you."
+      case 'reminder':
+        return `Site visit ${item.timeText ? `at ${item.timeText}` : 'coming up'} — worth a check-in beforehand.`
+      default:
+        return ''
+    }
+  }
+
+  // A starting point, not a final draft — the rep edits or sends as-is. Kept
+  // as a plain template rather than a per-tile AI call so opening the feed
+  // never fires a round of model calls just for being on screen; the
+  // contextual AI field below is where an actual AI request happens, and
+  // only when the rep asks for one.
+  function suggestedMessageFor(item: DashboardFeedItem): string {
+    const name = item.title.split(' ')[0] || item.title
+    if (item.type === 'new_lead') {
+      return `Hi ${name}, thanks for reaching out about storage! Could you share roughly what size you need and when you'd like to start?`
+    }
+    if (item.type === 'followup_overdue' || item.type === 'followup_today') {
+      return `Hi ${name}, just following up${item.note ? ` on ${item.note}` : ''} — would you like me to help you take the next step?`
+    }
+    return `Hi ${name}, looking forward to your visit — let me know if the timing still works for you.`
+  }
+
+  const sendSuggested = useMutation({
+    mutationFn: ({ phone, text }: { phone: string; text: string; name: string }) => whatsappApi.send(phone, text),
+    onSuccess: (_res, { name }) => notify('Sent', `Your message to ${name} is on its way.`),
+    onError: (e) => notify('Could not send', apiError(e)),
+  })
+
+  function submitTileAi(item: DashboardFeedItem) {
+    const text = tileAiValue.trim()
+    if (!text) return
+    setTileAiValue('')
+    runCommand(`Regarding ${item.title} (${item.phone}): ${text}`)
+  }
+
   const renderFeedItem = useCallback(
-    ({ item, index }: { item: DashboardFeedItem; index: number }) => (
-      <SwipeableDashboardCard
-        id={item.id}
-        index={index}
-        type={item.type}
-        title={item.title}
-        subtitle={item.subtitle}
-        note={item.note}
-        lastMessage={item.lastMessage}
-        lastMessageMine={item.lastMessageMine}
-        timeText={item.timeText}
-        phone={item.phone}
-        leadStatus={item.leadStatus}
-        onChat={() => handleStartChatAndDismiss(item)}
-        onReschedule={() => handleReschedule(item)}
-        onOpenDetails={() => handleOpenDetails(item.leadId)}
-      />
-    ),
-    [handleReschedule, handleOpenDetails]
+    ({ item, index }: { item: DashboardFeedItem; index: number }) => {
+      const expanded = activeExpandedId === item.id
+      return (
+        <SwipeableDashboardCard
+          id={item.id}
+          index={index}
+          type={item.type}
+          title={item.title}
+          subtitle={item.subtitle}
+          note={item.note}
+          lastMessage={item.lastMessage}
+          lastMessageMine={item.lastMessageMine}
+          timeText={item.timeText}
+          phone={item.phone}
+          leadStatus={item.leadStatus}
+          onChat={() => handleStartChatAndDismiss(item)}
+          onReschedule={() => handleReschedule(item)}
+          onOpenDetails={() => handleOpenDetails(item.leadId)}
+          expanded={expanded}
+          onToggleExpand={() => toggleExpand(item.id)}
+          whyNow={expanded ? whyNowFor(item) : undefined}
+          suggestedMessage={expanded ? suggestedMessageFor(item) : undefined}
+          sendingMessage={sendSuggested.isPending}
+          onSendSuggested={(text) => sendSuggested.mutate({ phone: item.phone, text, name: item.title })}
+          aiValue={tileAiValue}
+          onChangeAi={setTileAiValue}
+          onSubmitAi={() => submitTileAi(item)}
+          aiBusy={askCommand.isPending}
+        />
+      )
+    },
+    [handleReschedule, handleOpenDetails, activeExpandedId, tileAiValue, sendSuggested.isPending, askCommand.isPending]
   )
 
   const isLoading = isLoadingFollowUps || isLoadingNewLeads || isLoadingSiteVisits
