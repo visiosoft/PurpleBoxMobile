@@ -2,14 +2,17 @@ import { useEffect, useState, memo, useCallback } from 'react'
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { leadApi, type Lead } from '../../../src/lib/leads'
 import { apiError } from '../../../src/lib/api'
+import { notify } from '../../../src/lib/alert'
 import { LEAD_STATUS_FLOW, statusMeta, leadDisplayName } from '../../../src/lib/leadStatus'
 import { COLORS, FONTS, RADII, SHADOWS, avatarStyle } from '../../../src/lib/theme'
 import PressableScale from '../../../src/components/PressableScale'
 import ScreenHeader from '../../../src/components/ScreenHeader'
+import SwipeToAction from '../../../src/components/SwipeToAction'
+import FollowUpSheet from '../../../src/components/FollowUpSheet'
 
 const FILTERS: { value: string; label: string }[] = [{ value: 'all', label: 'All' }, ...LEAD_STATUS_FLOW]
 
@@ -38,10 +41,22 @@ function followUpLabel(lead: Lead): { text: string; overdue: boolean } {
 
 export default function LeadsListScreen() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [status, setStatus] = useState('all')
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [manualRefreshing, setManualRefreshing] = useState(false)
+  const [rescheduleLead, setRescheduleLead] = useState<{ id: string; name: string; currentFollowUp?: string | null } | null>(null)
+
+  const scheduleFollowUpMutation = useMutation({
+    mutationFn: ({ id, iso }: { id: string; iso: string }) => leadApi.scheduleFollowUp(id, iso),
+    onSuccess: () => {
+      notify('Follow-up scheduled', 'The lead has been rescheduled.')
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+      setRescheduleLead(null)
+    },
+    onError: () => notify('Could not reschedule', 'Failed to update follow-up date.'),
+  })
 
   const onManualRefresh = async () => {
     setManualRefreshing(true)
@@ -80,14 +95,19 @@ export default function LeadsListScreen() {
     router.push(`/leads/${leadId}`)
   }, [router])
 
+  const requestReschedule = useCallback((lead: Lead) => {
+    setRescheduleLead({ id: lead._id, name: leadDisplayName(lead), currentFollowUp: lead.followUpAt })
+  }, [])
+
   const renderLeadCard = useCallback(({ item, index }: { item: Lead; index: number }) => (
     <MemoizedLeadCard
       lead={item}
       index={index}
       onOpen={() => openLead(item._id)}
       onChat={() => openChat(item)}
+      onReschedule={() => requestReschedule(item)}
     />
-  ), [openLead, openChat])
+  ), [openLead, openChat, requestReschedule])
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt }}>
@@ -186,18 +206,33 @@ export default function LeadsListScreen() {
           renderItem={renderLeadCard}
         />
       )}
+
+      {!!rescheduleLead && (
+        <FollowUpSheet
+          visible={!!rescheduleLead}
+          current={rescheduleLead.currentFollowUp}
+          title={`Reschedule: ${rescheduleLead.name}`}
+          onSchedule={(iso) => scheduleFollowUpMutation.mutate({ id: rescheduleLead.id, iso })}
+          onClose={() => setRescheduleLead(null)}
+        />
+      )}
     </View>
   )
 }
 
 function LeadCard({
-  lead, index, onOpen, onChat,
-}: { lead: Lead; index: number; onOpen: () => void; onChat: () => void }) {
+  lead, index, onOpen, onChat, onReschedule,
+}: { lead: Lead; index: number; onOpen: () => void; onChat: () => void; onReschedule: () => void }) {
   const meta = statusMeta(lead.status)
   const av = avatarStyle(index)
   const fu = followUpLabel(lead)
   const name = leadDisplayName(lead)
   return (
+    <SwipeToAction
+      right={{ icon: 'logo-whatsapp', label: 'Chat & Open', subLabel: 'Swipe right to start', color: '#1DAA50', onTrigger: onChat }}
+      left={{ icon: 'calendar', label: 'Reschedule', subLabel: 'Set new follow-up date', color: COLORS.purple600, onTrigger: onReschedule }}
+      borderRadius={RADII.card}
+    >
     <View style={{ borderWidth: 1, borderColor: COLORS.line, borderRadius: RADII.card, backgroundColor: '#fff', overflow: 'hidden', ...SHADOWS.card }}>
       <View style={{ height: 3, backgroundColor: meta.dot }} />
       <View style={{ padding: 14 }}>
@@ -240,12 +275,13 @@ function LeadCard({
           <PressableScale onPress={onChat} style={{ flex: 1, height: 40, paddingHorizontal: 12, borderRadius: 12, backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', ...SHADOWS.whatsappGlow }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>WhatsApp</Text>
           </PressableScale>
-          <PressableScale onPress={onOpen} style={{ flex: 1, height: 40, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}>
+          <PressableScale onPress={onReschedule} style={{ flex: 1, height: 40, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.purple600 }}>Follow-up</Text>
           </PressableScale>
         </View>
       </View>
     </View>
+    </SwipeToAction>
   )
 }
 
