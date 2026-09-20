@@ -127,12 +127,25 @@ function TabIcon({ focused, name, badge }: { focused: boolean; name: keyof typeo
         {!!badge && badge > 0 && (
           <View
             style={{
-              position: 'absolute', top: -3, right: -9, minWidth: 15, height: 15, borderRadius: 8,
+              position: 'absolute', top: -4, right: -10, minWidth: 17, height: 17, borderRadius: 9,
               backgroundColor: COLORS.whatsapp, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
               borderWidth: 1.5, borderColor: '#fff',
             }}
           >
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9, color: '#fff' }}>{badge > 9 ? '9+' : badge}</Text>
+            <Text
+              style={{
+                fontFamily: FONTS.bodyBold, fontSize: 9.5, lineHeight: 12, color: '#fff',
+                // Android pads a Text's glyph box top/bottom by default,
+                // which in a circle this small pushes the number visibly
+                // off-center (or clips it against the border) — the actual
+                // bug behind "the footer number isn't showing properly".
+                // Both are no-ops on iOS.
+                includeFontPadding: false,
+                textAlignVertical: 'center',
+              }}
+            >
+              {badge > 9 ? '9+' : badge}
+            </Text>
           </View>
         )}
       </View>
