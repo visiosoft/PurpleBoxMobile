@@ -34,6 +34,17 @@ export const assistantApi = {
   confirm: (id: string) =>
     api.post<{ ok: boolean; message: string; pdfPath?: string }>('/assistant/confirm', { id }).then((r) => r.data),
   cancel: (id: string) => api.post<{ ok: true; message: string }>('/assistant/cancel', { id }).then((r) => r.data),
+  /** `uri` is a local recording (e.g. from expo-audio) — sent the same
+   *  multipart way whatsapp.ts's sendMedia sends a voice note, just to a
+   *  different endpoint. Comes back as plain text; the caller runs it
+   *  through `ask` itself, exactly as if it had been typed. */
+  transcribe: (uri: string) => {
+    const form = new FormData()
+    form.append('audio', { uri, name: 'command.m4a', type: 'audio/m4a' } as unknown as Blob)
+    return api
+      .post<{ text: string }>('/assistant/transcribe', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .then((r) => r.data.text)
+  },
 }
 
 export const EXAMPLE_PROMPTS = [
