@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../src/lib/auth'
 import { leadApi } from '../../src/lib/leads'
 import { COLORS, FONTS, GRADIENT_ADMIN, GRADIENT_ADMIN_LOCATIONS, RADII, SHADOWS } from '../../src/lib/theme'
+import CommandBarSection from '../../src/components/CommandBarSection'
 
 /**
  * Admin's Sales overview — placeholder for Phase 6 (team roster, per-rep
@@ -45,22 +46,26 @@ export default function OverviewTab() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView style={{ flex: 1, marginTop: -24 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {tiles.map((t) => (
-            <View key={t.label} style={{ width: '47%', backgroundColor: '#fff', borderRadius: RADII.card, padding: 14, ...SHADOWS.card }}>
-              <Text style={{ fontFamily: FONTS.display, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink }}>{t.value}</Text>
-              <Text style={{ marginTop: 4, fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink3 }}>{t.label}</Text>
+      <View style={{ flex: 1, marginTop: -24, paddingHorizontal: 16, paddingTop: 8 }}>
+        <CommandBarSection>
+          <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {tiles.map((t) => (
+                <View key={t.label} style={{ width: '47%', backgroundColor: '#fff', borderRadius: RADII.card, padding: 14, ...SHADOWS.card }}>
+                  <Text style={{ fontFamily: FONTS.display, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink }}>{t.value}</Text>
+                  <Text style={{ marginTop: 4, fontFamily: FONTS.bodyMedium, fontSize: 12, color: COLORS.ink3 }}>{t.label}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <View style={{ marginTop: 20, padding: 18, borderRadius: RADII.card, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center' }}>
-          <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.ink3, textAlign: 'center', lineHeight: 19 }}>
-            Per-rep performance and team roster are coming soon here.
-          </Text>
-        </View>
-      </ScrollView>
+            <View style={{ marginTop: 20, padding: 18, borderRadius: RADII.card, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center' }}>
+              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.ink3, textAlign: 'center', lineHeight: 19 }}>
+                Per-rep performance and team roster are coming soon here.
+              </Text>
+            </View>
+          </ScrollView>
+        </CommandBarSection>
+      </View>
     </View>
   )
 }

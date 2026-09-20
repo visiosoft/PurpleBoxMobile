@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -6,8 +6,6 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  TextInput,
-  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -32,20 +30,9 @@ import SwipeableDashboardCard, {
   type DashboardItemType,
 } from '../../src/components/SwipeableDashboardCard'
 import FollowUpSheet from '../../src/components/FollowUpSheet'
-import AssistantResultCard from '../../src/components/AssistantResultCard'
+import CommandBarSection, { type CommandBarHandle } from '../../src/components/CommandBarSection'
 import { useDashboardDismissed } from '../../src/lib/dashboardDismissed'
-import { assistantApi, type AssistantAskResponse, type AssistantMessage } from '../../src/lib/assistant'
-import { apiError, API_BASE_URL } from '../../src/lib/api'
-import {
-  useAudioRecorder, useAudioRecorderState, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync,
-} from 'expo-audio'
-
-function formatRecordingTime(ms: number): string {
-  const total = Math.floor(ms / 1000)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+import { apiError } from '../../src/lib/api'
 
 type FilterCategory = 'all' | 'reminders' | 'followups' | 'new_leads'
 
@@ -116,91 +103,12 @@ export default function HomeTab() {
 
   const { dismissedSet, dismiss, clearAll } = useDashboardDismissed()
 
-  // ── BayOps command bar: a question's result replaces the feed until
-  // "‹ Priorities" is tapped, rather than opening a separate chat screen —
-  // see the full "Assistant" tab (app/(tabs)/assistant.tsx) for the same
-  // assistant as an ordinary chat, if that's ever wanted instead. Both call
-  // the identical server endpoints; this is just a different frame around
-  // the same answers.
-  const [commandMode, setCommandMode] = useState<'feed' | 'results'>('feed')
-  const [commandDraft, setCommandDraft] = useState('')
-  const [commandAsked, setCommandAsked] = useState('')
-  const [commandHistory, setCommandHistory] = useState<AssistantMessage[]>([])
-  const [commandResult, setCommandResult] = useState<AssistantAskResponse | null>(null)
-  const [transcribing, setTranscribing] = useState(false)
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
-  const recorderState = useAudioRecorderState(recorder, 200)
-
-  const askCommand = useMutation({
-    mutationFn: (question: string) => assistantApi.ask(question, commandHistory),
-    onSuccess: (res, question) => {
-      setCommandResult(res)
-      const turns: AssistantMessage[] = [{ role: 'user', content: question }, { role: 'assistant', content: res.answer }]
-      setCommandHistory((prev) => [...prev, ...turns].slice(-8))
-    },
-    onError: (e) => {
-      setCommandResult({ answer: apiError(e), tools: [], model: '', rounds: 0, grounded: false })
-    },
-  })
-
-  const confirmCommand = useMutation({
-    mutationFn: (id: string) => assistantApi.confirm(id),
-    onSuccess: (res) => {
-      setCommandResult((prev) => (prev ? { ...prev, answer: res.message, pending: null, links: [] } : prev))
-      if (res.pdfPath) {
-        const url = res.pdfPath.startsWith('http') ? res.pdfPath : `${API_BASE_URL.replace(/\/api$/, '')}${res.pdfPath}`
-        Linking.openURL(url).catch(() => {})
-      }
-    },
-    onError: (e) => notify('Could not confirm', apiError(e)),
-  })
-
-  const cancelCommand = useMutation({
-    mutationFn: (id: string) => assistantApi.cancel(id),
-    onSuccess: (res) => {
-      setCommandResult((prev) => (prev ? { ...prev, answer: res.message, pending: null, links: [] } : prev))
-    },
-    onError: (e) => notify('Could not cancel', apiError(e)),
-  })
-
-  function runCommand(question: string) {
-    const text = question.trim()
-    if (!text || askCommand.isPending) return
-    setCommandMode('results')
-    setCommandAsked(text)
-    setCommandDraft('')
-    setCommandResult(null)
-    askCommand.mutate(text)
-  }
-
-  function backToPriorities() {
-    setCommandMode('feed')
-    setCommandResult(null)
-  }
-
-  async function startVoiceCommand() {
-    const perm = await requestRecordingPermissionsAsync()
-    if (!perm.granted) { notify('Microphone access needed', 'Allow microphone access to speak a command.'); return }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
-    await recorder.prepareToRecordAsync()
-    recorder.record()
-  }
-
-  async function stopVoiceCommand(send: boolean) {
-    await recorder.stop()
-    const uri = recorder.uri
-    if (!send || !uri) return
-    setTranscribing(true)
-    try {
-      const text = await assistantApi.transcribe(uri)
-      if (!text) { notify("Didn't catch that", 'Try again, or type it instead.'); return }
-      runCommand(text)
-    } catch (e) {
-      notify('Could not transcribe', apiError(e))
-    } finally {
-      setTranscribing(false)
-    }
-  }
+  // The command bar itself (bar UI, typed/spoken input, ask/confirm/cancel,
+  // the results view) lives in CommandBarSection now — shared with the
+  // admin Overview screen so both get the identical bar, not a copy. Home
+  // only needs an imperative handle so the per-tile AI field below can run
+  // a command through the same instance.
+  const commandBarRef = useRef<CommandBarHandle>(null)
 
   // 1. Follow-ups and reminders
   const {
@@ -516,7 +424,7 @@ export default function HomeTab() {
     const text = tileAiValue.trim()
     if (!text) return
     setTileAiValue('')
-    runCommand(`Regarding ${item.title} (${item.phone}): ${text}`)
+    commandBarRef.current?.runCommand(`Regarding ${item.title} (${item.phone}): ${text}`)
   }
 
   const renderFeedItem = useCallback(
@@ -547,11 +455,10 @@ export default function HomeTab() {
           aiValue={tileAiValue}
           onChangeAi={setTileAiValue}
           onSubmitAi={() => submitTileAi(item)}
-          aiBusy={askCommand.isPending}
         />
       )
     },
-    [handleReschedule, handleOpenDetails, activeExpandedId, tileAiValue, sendSuggested.isPending, askCommand.isPending]
+    [handleReschedule, handleOpenDetails, activeExpandedId, tileAiValue, sendSuggested.isPending]
   )
 
   const isLoading = isLoadingFollowUps || isLoadingNewLeads || isLoadingSiteVisits
@@ -706,129 +613,7 @@ export default function HomeTab() {
 
       {/* Main Content Area */}
       <View style={{ flex: 1, paddingHorizontal: 14, paddingTop: 10 }}>
-        {/* Command bar — asks the same "Ask the system" assistant the full
-            Assistant tab uses; its answer replaces everything below until
-            "‹ Priorities" is tapped. Typed or spoken: the mic records, sends
-            the clip to /assistant/transcribe, then runs the transcript
-            through exactly the same command path as if it had been typed. */}
-        {recorderState.isRecording ? (
-          <View
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 10, height: 48,
-              borderRadius: 999, backgroundColor: '#fff', paddingHorizontal: 8, marginBottom: 10, ...SHADOWS.card,
-            }}
-          >
-            <PressableScale
-              onPress={() => stopVoiceCommand(false)}
-              style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.control, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
-            </PressableScale>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: COLORS.danger }} />
-              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13.5, color: COLORS.ink, fontVariant: ['tabular-nums'] }}>
-                {formatRecordingTime(recorderState.durationMillis)}
-              </Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.ink3 }}>Listening…</Text>
-            </View>
-            <PressableScale
-              onPress={() => stopVoiceCommand(true)}
-              style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.brand, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name="checkmark" size={18} color="#fff" />
-            </PressableScale>
-          </View>
-        ) : (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              height: 48,
-              borderRadius: 999,
-              backgroundColor: '#fff',
-              borderWidth: 1,
-              borderColor: COLORS.line,
-              paddingLeft: 6,
-              paddingRight: 6,
-              marginBottom: 10,
-              ...SHADOWS.card,
-            }}
-          >
-            <View
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: COLORS.brand,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 8,
-              }}
-            >
-              {transcribing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={16} color="#fff" />}
-            </View>
-            <TextInput
-              value={commandDraft}
-              onChangeText={setCommandDraft}
-              onSubmitEditing={() => runCommand(commandDraft)}
-              placeholder={transcribing ? 'Listening to that…' : 'Ask BayOps anything…'}
-              placeholderTextColor={COLORS.faint}
-              returnKeyType="send"
-              editable={!transcribing}
-              style={{ flex: 1, fontFamily: FONTS.body, fontSize: 14.5, color: COLORS.ink }}
-            />
-            {commandDraft.trim() ? (
-              <PressableScale
-                onPress={() => runCommand(commandDraft)}
-                disabled={askCommand.isPending}
-                style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.brand }}
-              >
-                <Ionicons name="arrow-up" size={17} color="#fff" />
-              </PressableScale>
-            ) : (
-              <PressableScale
-                onPress={startVoiceCommand}
-                disabled={transcribing}
-                style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.control }}
-              >
-                <Ionicons name="mic" size={17} color={COLORS.brandDark} />
-              </PressableScale>
-            )}
-          </View>
-        )}
-
-        {commandMode === 'results' ? (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text
-                style={{ flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink3, marginRight: 8 }}
-                numberOfLines={1}
-              >
-                You asked: "{commandAsked}"
-              </Text>
-              <PressableScale
-                onPress={backToPriorities}
-                style={{
-                  paddingHorizontal: 12,
-                  height: 30,
-                  borderRadius: 999,
-                  backgroundColor: COLORS.control,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 11.5, color: COLORS.ink }}>‹ Priorities</Text>
-              </PressableScale>
-            </View>
-            <AssistantResultCard
-              result={commandResult}
-              busyLabel={askCommand.isPending ? 'Checking…' : null}
-              confirmBusy={confirmCommand.isPending || cancelCommand.isPending}
-              onConfirm={(id) => confirmCommand.mutate(id)}
-              onCancel={(id) => cancelCommand.mutate(id)}
-            />
-          </ScrollView>
-        ) : (
+        <CommandBarSection ref={commandBarRef}>
         <>
         {/* Category Chips Bar (Horizontal Scroll to avoid clutter/overlap) */}
         <View style={{ marginBottom: 10 }}>
@@ -1035,7 +820,7 @@ export default function HomeTab() {
           />
         )}
         </>
-        )}
+        </CommandBarSection>
       </View>
 
       {/* Reschedule Follow-up Sheet */}
