@@ -505,7 +505,12 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     actionBackground: {
-        ...StyleSheet.absoluteFillObject,
+        // Not absoluteFillObject — this RN version only ships absoluteFill
+        // (the type checker already flagged this; it wasn't just a stale
+        // type, the property is genuinely undefined at runtime here, so
+        // this layer rendered as a normal in-flow block instead of pinned
+        // behind the card — inflating every card's height by its own).
+        ...StyleSheet.absoluteFill,
         borderRadius: 16,
         justifyContent: 'center',
     },
