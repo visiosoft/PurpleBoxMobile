@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# release signing — the upload key and its passwords never go in git
+credentials.json
+credentials/
