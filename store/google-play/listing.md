@@ -84,3 +84,7 @@ First release of PurpleBox for Android: leads, WhatsApp, follow-ups, unit search
 | Phone screenshots | `phone/01-…png` – `phone/08-…png` | 2–8 images, 1080 × 1920 (9:16), PNG/JPEG, no alpha |
 
 Upload the phone screenshots in their numbered order: the first three are the ones shown in search results.
+
+The screenshots show the real app UI rendered with made-up demo data (no real
+customers). Replace them with captures from a test account at any time; keep
+1080 × 1920.
