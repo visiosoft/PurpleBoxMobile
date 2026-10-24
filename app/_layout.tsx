@@ -18,6 +18,12 @@ import {
 import { useFonts as useIconFont } from 'expo-font'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { AuthProvider, useAuth } from '../src/lib/auth'
+import {
+  callSyncSupported, requestCallLogPermission, syncCalls, takePendingNoteCall, saveCallNote,
+  startBackgroundCallSync, stopBackgroundCallSync, type LeadCall,
+} from '../src/lib/callSync'
+import CallNoteSheet from '../src/components/CallNoteSheet'
+import { notify } from '../src/lib/alert'
 
 const supportsRemotePush = Platform.OS !== 'web'
   && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient
@@ -137,6 +143,49 @@ function PushIntegration() {
   return null
 }
 
+/**
+ * Android call-log sync (src/lib/callSync.ts): asks for the call log once
+ * signed in, syncs on open and on every return to the app, keeps a
+ * background sync going, and after an answered call to a lead offers a
+ * quick note.
+ */
+function CallSyncIntegration() {
+  const { isSignedIn } = useAuth()
+  const [noteFor, setNoteFor] = useState<LeadCall | null>(null)
+
+  useEffect(() => {
+    if (!callSyncSupported) return undefined
+    if (!isSignedIn) {
+      stopBackgroundCallSync().catch(() => { })
+      return undefined
+    }
+    const syncNow = async () => {
+      await syncCalls().catch(() => [])
+      const call = await takePendingNoteCall()
+      if (call) setNoteFor(call)
+    }
+    requestCallLogPermission().then((granted) => {
+      if (!granted) return
+      startBackgroundCallSync().catch(() => { })
+      syncNow()
+    })
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') syncNow() })
+    return () => sub.remove()
+  }, [isSignedIn])
+
+  return (
+    <CallNoteSheet
+      name={noteFor?.name ?? null}
+      onClose={() => setNoteFor(null)}
+      onSave={(note) => {
+        const call = noteFor
+        setNoteFor(null)
+        if (call && note) saveCallNote(call.id, note).catch(() => notify('Note not saved', 'Please add it on the lead instead.'))
+      }}
+    />
+  )
+}
+
 export default function RootLayout() {
   const [bricolageLoaded] = useBricolage({ BricolageGrotesque_700Bold })
   const [jakartaLoaded] = useJakarta({ PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold })
@@ -166,6 +215,7 @@ export default function RootLayout() {
           <AuthProvider>
             <RouteGuard>
               <PushIntegration />
+              <CallSyncIntegration />
               <StatusBar style="dark" />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="login" />
