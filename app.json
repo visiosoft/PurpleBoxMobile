@@ -29,7 +29,8 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.READ_CALL_LOG"
       ]
     },
     "web": {
@@ -63,7 +64,8 @@
         {
           "color": "#5B2BC9"
         }
-      ]
+      ],
+      "expo-background-task"
     ],
     "extra": {
       "router": {},

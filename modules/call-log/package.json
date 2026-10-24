@@ -1,0 +1,6 @@
+{
+  "name": "call-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reads the Android call log for the PurpleBox call sync"
+}
