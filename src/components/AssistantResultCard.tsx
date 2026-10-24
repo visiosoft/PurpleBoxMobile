@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router'
 import { COLORS, FONTS, SHADOWS } from '../lib/theme'
 import PressableScale from './PressableScale'
 import {
-  toolLabel,
+  toolLabel, assistantLinkRoute,
   type AssistantAskResponse, type AssistantLink,
   type InventoryCardData, type ContactsCardData, type PriceCardData,
 } from '../lib/assistant'
@@ -118,8 +118,8 @@ export default function AssistantResultCard({
   if (!result) return null
 
   function openLink(link: AssistantLink) {
-    const leadMatch = link.path.match(/^\/leads\/([a-f0-9]{24})/i)
-    if (leadMatch) { router.push(`/leads/${leadMatch[1]}`); return }
+    const route = assistantLinkRoute(link)
+    if (route) { router.push(route); return }
     notify(link.label, 'Open this on the web app to view it.')
   }
 

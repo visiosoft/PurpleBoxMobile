@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import {
-  assistantApi, EXAMPLE_PROMPTS, toolLabel,
+  assistantApi, EXAMPLE_PROMPTS, toolLabel, assistantLinkRoute,
   type AssistantLink, type AssistantMessage, type AssistantPending, type AssistantTool,
 } from '../../src/lib/assistant'
 import { apiError, API_BASE_URL } from '../../src/lib/api'
@@ -90,8 +90,8 @@ export default function AssistantScreen() {
   }
 
   function openLink(link: AssistantLink) {
-    const leadMatch = link.path.match(/^\/leads\/([a-f0-9]{24})/i)
-    if (leadMatch) { router.push(`/leads/${leadMatch[1]}`); return }
+    const route = assistantLinkRoute(link)
+    if (route) { router.push(route); return }
     notify(link.label, 'Open this on the web app to view it.')
   }
 

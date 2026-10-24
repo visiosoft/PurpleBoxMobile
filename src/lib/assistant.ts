@@ -113,3 +113,25 @@ export const EXAMPLE_PROMPTS = [
 export function toolLabel(name: string): string {
   return name.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 }
+
+/** Turns a link the assistant sent back (`{ label, path }`) into an in-app
+ *  route, for the couple of destinations this app actually has a screen
+ *  for. Shared by AssistantResultCard and the Assistant tab so the two
+ *  chat surfaces don't drift — anything not matched here falls back to
+ *  the caller's "open this on the web" notice. */
+export function assistantLinkRoute(
+  link: AssistantLink,
+): { pathname: string; params?: Record<string, string> } | null {
+  const leadMatch = link.path.match(/^\/leads\/([a-f0-9]{24})/i)
+  if (leadMatch) return { pathname: `/leads/${leadMatch[1]}` }
+
+  const chatMatch = link.path.match(/^\/whatsapp\/([^/?]+)/i)
+  if (chatMatch) {
+    const name = link.label.replace(/^chat with\s*/i, '').trim()
+    return { pathname: '/whatsapp/[phone]', params: { phone: decodeURIComponent(chatMatch[1]), name } }
+  }
+
+  if (/^\/whatsapp\/?$/i.test(link.path)) return { pathname: '/whatsapp' }
+
+  return null
+}
