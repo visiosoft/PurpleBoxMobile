@@ -26,6 +26,11 @@ export type AssistantAskResponse = {
   card?: AssistantCard | null
 }
 
+/** Which screen (and lead) the question was asked from, so "send her the
+ *  quote" needs no name. The server only treats it as a pointer — its tools
+ *  still look the lead up. */
+export type AssistantContext = { screen?: string; leadId?: string; phone?: string; name?: string }
+
 export type AssistantCapabilities = { enabled: boolean; allowed: boolean; tools: string[] }
 
 /** The Overview screen's "AI insight" card — see
@@ -81,10 +86,12 @@ export type AssistantCard =
 
 export const assistantApi = {
   capabilities: () => api.get<AssistantCapabilities>('/assistant/capabilities').then((r) => r.data),
-  ask: (question: string, history: AssistantMessage[]) =>
-    api.post<AssistantAskResponse>('/assistant/ask', { question, history: history.slice(-8) }).then((r) => r.data),
+  // A booking end to end is several lookups in one answer, so this gets far
+  // longer than a normal request before giving up.
+  ask: (question: string, history: AssistantMessage[], context?: AssistantContext) =>
+    api.post<AssistantAskResponse>('/assistant/ask', { question, history: history.slice(-8), context }, { timeout: 150_000 }).then((r) => r.data),
   confirm: (id: string) =>
-    api.post<{ ok: boolean; message: string; pdfPath?: string }>('/assistant/confirm', { id }).then((r) => r.data),
+    api.post<{ ok: boolean; message: string; pdfPath?: string }>('/assistant/confirm', { id }, { timeout: 90_000 }).then((r) => r.data),
   cancel: (id: string) => api.post<{ ok: true; message: string }>('/assistant/cancel', { id }).then((r) => r.data),
   adminInsight: () => api.get<AdminInsight>('/assistant/admin-insight').then((r) => r.data),
   /** `uri` is a local recording (e.g. from expo-audio) — sent the same
@@ -101,6 +108,8 @@ export const assistantApi = {
 }
 
 export const EXAMPLE_PROMPTS = [
+  'Who is waiting for my reply?',
+  'Which of my follow-ups are due today, and what should I send each one?',
   'How many 10 sq ft units are free?',
   'Which contracts end this month?',
   "Who's still waiting for a WhatsApp reply?",
@@ -129,6 +138,13 @@ export function assistantLinkRoute(
   if (chatMatch) {
     const name = link.label.replace(/^chat with\s*/i, '').trim()
     return { pathname: '/whatsapp/[phone]', params: { phone: decodeURIComponent(chatMatch[1]), name } }
+  }
+
+  // The older tools link a chat as /whatsapp?phone=971…
+  const chatQuery = link.path.match(/^\/whatsapp\/?\?phone=([^&]+)/i)
+  if (chatQuery) {
+    const name = link.label.replace(/^chat with\s*/i, '').trim()
+    return { pathname: '/whatsapp/[phone]', params: { phone: decodeURIComponent(chatQuery[1]), name } }
   }
 
   if (/^\/whatsapp\/?$/i.test(link.path)) return { pathname: '/whatsapp' }

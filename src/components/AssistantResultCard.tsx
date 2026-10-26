@@ -98,12 +98,16 @@ export default function AssistantResultCard({
   confirmBusy,
   onConfirm,
   onCancel,
+  onNavigate,
 }: {
   result: AssistantAskResponse | null
   busyLabel?: string | null
   confirmBusy: boolean
   onConfirm: (id: string) => void
   onCancel: (id: string) => void
+  /** Called before a link navigates — the Ask AI sheet closes itself so the
+   *  screen it opened isn't hidden underneath. */
+  onNavigate?: () => void
 }) {
   const router = useRouter()
 
@@ -119,7 +123,7 @@ export default function AssistantResultCard({
 
   function openLink(link: AssistantLink) {
     const route = assistantLinkRoute(link)
-    if (route) { router.push(route); return }
+    if (route) { onNavigate?.(); router.push(route); return }
     notify(link.label, 'Open this on the web app to view it.')
   }
 

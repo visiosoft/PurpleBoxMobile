@@ -30,6 +30,7 @@ import QuoteSheet from '../../../src/components/QuoteSheet'
 import LostReasonSheet from '../../../src/components/LostReasonSheet'
 import ContactedNoteSheet from '../../../src/components/ContactedNoteSheet'
 import PressableScale from '../../../src/components/PressableScale'
+import { AiSheet } from '../../../src/components/AskAiBar'
 
 type PendingMedia = { uri: string; name: string; mimeType: string; kind: 'image' | 'video' | 'audio' }
 
@@ -73,6 +74,7 @@ export default function ChatThreadScreen() {
   const [uploadPct, setUploadPct] = useState<number | null>(null)
   const [sendErr, setSendErr] = useState('')
   const [scoreOpen, setScoreOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
@@ -445,6 +447,18 @@ export default function ChatThreadScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+      <AiSheet
+        visible={aiOpen}
+        onClose={() => setAiOpen(false)}
+        context={{ screen: 'WhatsApp chat', leadId: leadId || undefined, phone, name: name || undefined }}
+        suggestions={[
+          'Draft a reply to their last message',
+          'Summarise this chat — what do they need?',
+          'Set a follow-up for 3 days from now',
+          'Book a site visit tomorrow at 11',
+          'Quote them the size they asked about, from next week for a month',
+        ]}
+      />
 
       <View style={{ backgroundColor: COLORS.purple600 }}>
         <SafeAreaView edges={['top']}>
@@ -468,6 +482,12 @@ export default function ChatThreadScreen() {
               <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: '#fff' }}>{name || phone}</Text>
               <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.body, fontSize: 11, color: 'rgba(255,255,255,0.8)', fontVariant: ['tabular-nums'] }}>{phone}</Text>
             </View>
+            {/* The same assistant as every other screen, told whose chat this
+                is — so "reply to her" or "book a visit tomorrow" needs no name. */}
+            <PressableScale onPress={() => setAiOpen(true)} style={{ height: 34, paddingHorizontal: 10, borderRadius: 11, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="sparkles" size={14} color={COLORS.purple600} />
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12, color: COLORS.purple600 }}>Ask AI</Text>
+            </PressableScale>
             <PressableScale onPress={() => Linking.openURL(`tel:${phone}`)} style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="call-outline" size={16} color="#fff" />
             </PressableScale>

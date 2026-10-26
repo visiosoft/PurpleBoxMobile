@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Modal, View, Text, Pressable, ActivityIndicator, ScrollView } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
@@ -5,6 +6,8 @@ import { unitApi } from '../../lib/units'
 import { apiError } from '../../lib/api'
 import { COLORS, FONTS } from '../../lib/theme'
 import { STATUS_STYLE, statusLabel } from './statusStyle'
+import PressableScale from '../PressableScale'
+import BookUnitSheet, { type BookMode } from '../BookUnitSheet'
 
 function formatDate(iso?: string): string {
   return iso ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
@@ -19,6 +22,7 @@ export default function UnitDetailSheet({ unitId, visible, onClose }: { unitId: 
 
   const unit = data?.unit
   const tone = unit ? STATUS_STYLE[unit.status] : null
+  const [book, setBook] = useState<BookMode | null>(null)
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -55,6 +59,19 @@ export default function UnitDetailSheet({ unitId, visible, onClose }: { unitId: 
                   <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.muted }}>per month{unit.discountPct ? ` · ${unit.discountPct}% off first 4 weeks` : ''}</Text>
                 </View>
               )}
+
+              {/* Availability for the customer's dates is checked when it's
+                  prepared, so a unit busy today can still be booked ahead. */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <PressableScale onPress={() => setBook('contract')} style={{ flex: 1, height: 46, borderRadius: 14, backgroundColor: COLORS.purple600, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
+                  <Ionicons name="key-outline" size={16} color="#fff" />
+                  <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: '#fff' }}>Book this unit</Text>
+                </PressableScale>
+                <PressableScale onPress={() => setBook('quote')} style={{ flex: 1, height: 46, borderRadius: 14, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
+                  <Ionicons name="document-text-outline" size={16} color={COLORS.purple600} />
+                  <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.purple600 }}>Quote</Text>
+                </PressableScale>
+              </View>
 
               <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16 }}>
                 <DetailRow label="Floor" value={unit.floor || '—'} />
@@ -96,6 +113,9 @@ export default function UnitDetailSheet({ unitId, visible, onClose }: { unitId: 
           )}
         </ScrollView>
       </View>
+      {unit && (
+        <BookUnitSheet visible={!!book} mode={book ?? 'contract'} unitNumber={unit.unitNumber} sizeSqf={unit.sizeSqf ?? undefined} onClose={() => setBook(null)} />
+      )}
     </Modal>
   )
 }

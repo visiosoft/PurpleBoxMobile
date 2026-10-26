@@ -10,6 +10,7 @@ import { getSeenMap, isUnread, markSeen } from '../../../src/lib/seen'
 import { statusMeta } from '../../../src/lib/leadStatus'
 import { COLORS, FONTS, RADII, SHADOWS, avatarStyle } from '../../../src/lib/theme'
 import PressableScale from '../../../src/components/PressableScale'
+import AskAiBar from '../../../src/components/AskAiBar'
 
 /**
  * The handoff's 3 inbox tabs — All / Waiting on me / Replied — replacing
@@ -131,6 +132,12 @@ export default function WhatsAppListScreen() {
         <SafeAreaView edges={['top']}>
           <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
             <Text style={{ fontFamily: FONTS.display, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink }}>WhatsApp</Text>
+
+            <AskAiBar context={{ screen: 'WhatsApp inbox' }} suggestions={[
+              'Who is waiting for my reply?',
+              'Draft replies for everyone who wrote to me in the last 2 hours',
+              'Which chats went quiet after I sent a quote?',
+            ]} />
 
             <View
               style={{

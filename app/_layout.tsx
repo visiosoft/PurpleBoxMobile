@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar'
 import Constants, { ExecutionEnvironment } from 'expo-constants'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts as useBricolage, BricolageGrotesque_700Bold } from '@expo-google-fonts/bricolage-grotesque'
 import {
@@ -37,6 +37,17 @@ SplashScreen.preventAutoHideAsync().catch(() => { })
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 })
+
+// React Native has no window focus event, so React Query never knew the app
+// had come back from the background: chats and lists kept showing whatever
+// they had when the phone was locked until the next timer happened to fire.
+// Coming back to the app now counts as focus, and anything stale refetches.
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener((handleFocus) => {
+    const sub = AppState.addEventListener('change', (state) => handleFocus(state === 'active'))
+    return () => sub.remove()
+  })
+}
 
 /**
  * Every screen behind the login wall lives under (tabs); every screen in
@@ -210,7 +221,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider initialWindowMetrics={initialWindowMetrics}>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <RouteGuard>

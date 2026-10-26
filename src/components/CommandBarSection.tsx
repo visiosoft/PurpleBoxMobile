@@ -6,7 +6,7 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-spe
 import { COLORS, FONTS, SHADOWS } from '../lib/theme'
 import PressableScale from './PressableScale'
 import AssistantResultCard from './AssistantResultCard'
-import { assistantApi, type AssistantAskResponse, type AssistantMessage } from '../lib/assistant'
+import { assistantApi, type AssistantAskResponse, type AssistantContext, type AssistantMessage } from '../lib/assistant'
 import { apiError, API_BASE_URL } from '../lib/api'
 import { notify } from '../lib/alert'
 
@@ -21,7 +21,14 @@ import { notify } from '../lib/alert'
 export type CommandBarHandle = { runCommand: (question: string) => void }
 
 function CommandBarSection(
-  { children, backLabel = '‹ Priorities' }: { children: ReactNode; backLabel?: string },
+  { children, backLabel = '‹ Back', context, autoFocus = false, onNavigate }: {
+    children: ReactNode
+    onNavigate?: () => void
+    backLabel?: string
+    /** The screen and lead it's asked from — see AssistantContext. */
+    context?: AssistantContext
+    autoFocus?: boolean
+  },
   ref: Ref<CommandBarHandle>,
 ) {
   const [mode, setMode] = useState<'default' | 'results'>('default')
@@ -32,7 +39,7 @@ function CommandBarSection(
   const [recognizing, setRecognizing] = useState(false)
 
   const ask = useMutation({
-    mutationFn: (question: string) => assistantApi.ask(question, history),
+    mutationFn: (question: string) => assistantApi.ask(question, history, context),
     onSuccess: (res, question) => {
       setResult(res)
       const turns: AssistantMessage[] = [{ role: 'user', content: question }, { role: 'assistant', content: res.answer }]
@@ -157,7 +164,8 @@ function CommandBarSection(
           value={draft}
           onChangeText={setDraft}
           onSubmitEditing={() => runCommand(draft)}
-          placeholder={recognizing ? 'Listening…' : 'Ask BayOps anything…'}
+          placeholder={recognizing ? 'Listening…' : 'Ask AI anything…'}
+          autoFocus={autoFocus}
           placeholderTextColor={COLORS.faint}
           returnKeyType="send"
           multiline
@@ -217,6 +225,7 @@ function CommandBarSection(
             confirmBusy={confirm.isPending || cancel.isPending}
             onConfirm={(id) => confirm.mutate(id)}
             onCancel={(id) => cancel.mutate(id)}
+            onNavigate={onNavigate}
           />
         </ScrollView>
       ) : (

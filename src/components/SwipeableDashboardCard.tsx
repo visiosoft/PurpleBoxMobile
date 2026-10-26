@@ -270,10 +270,10 @@ function SwipeableDashboardCard({
                     >
                         <View>
                             <Text style={[styles.actionMainText, { textAlign: 'right' }]}>
-                                Reschedule
+                                Follow up
                             </Text>
                             <Text style={[styles.actionSubText, { textAlign: 'right' }]}>
-                                Set new follow-up date
+                                Set the next follow-up
                             </Text>
                         </View>
                         <View style={[styles.actionIconCircle, { backgroundColor: 'rgba(255,255,255,0.24)' }]}>

@@ -101,10 +101,19 @@ export type FollowUpLeadRow = {
   fullName: string
   whatsappProfileName?: string
   phone: string
+  /** The 971… form WhatsApp files the chat under — open chats with this,
+   *  never `phone`, which may be saved the local way (050…). */
+  phoneNormalized?: string
   status: LeadStatus
   followUpAt: string | null
+  siteVisitAt?: string | null
+  createdAt?: string
+  /** The last WhatsApp message either way, so a row can say who wrote last. */
+  lastMessageAt?: string | null
+  lastMessageMine?: boolean | null
   owner?: { _id: string; name: string } | null
 }
+export type NewlyAssignedLead = { _id: string; fullName: string; phone: string; source?: string; assignedAt?: string }
 export type QuotePreview = { ok: true; proposalId: string; summary: string[]; total: number; unit: string }
 export type FollowUps = { overdue: FollowUpLeadRow[]; today: FollowUpLeadRow[]; upcoming: FollowUpLeadRow[]; days: number }
 
@@ -114,6 +123,10 @@ export const leadApi = {
   /** Own leads only, per the server's own role scoping — what the
    *  notification bell counts against. */
   followUps: () => api.get<FollowUps>('/leads/follow-ups').then((r) => r.data),
+  /** Handed to me in the last few hours and not opened yet — the dashboard's "assigned to you" alert. */
+  newlyAssigned: () => api.get<NewlyAssignedLead[]>('/leads/newly-assigned').then((r) => r.data),
+  /** I've looked at it: it leaves the "assigned to you" alert. */
+  markSeen: (id: string) => api.post(`/leads/${id}/seen`).then((r) => r.data),
   get: (id: string) => api.get<Lead>(`/leads/${id}`).then((r) => r.data),
   updateStatus: (id: string, status: LeadStatus, comment?: string) =>
     api.patch<Lead>(`/leads/${id}/status`, { status, comment }).then((r) => r.data),

@@ -14,6 +14,7 @@ import PressableScale from '../../src/components/PressableScale'
 import ScreenHeader from '../../src/components/ScreenHeader'
 import SwipeableDashboardCard from '../../src/components/SwipeableDashboardCard'
 import FollowUpSheet from '../../src/components/FollowUpSheet'
+import AskAiBar from '../../src/components/AskAiBar'
 
 // Last 9 digits: a lead saved as 055… and its chat as 97155… are one person.
 const digitsOf = (p: string) => p.replace(/\D/g, '').slice(-9)
@@ -81,12 +82,12 @@ export default function FollowUpsTab() {
   const scheduleFollowUpMutation = useMutation({
     mutationFn: ({ id, iso }: { id: string; iso: string }) => leadApi.scheduleFollowUp(id, iso),
     onSuccess: () => {
-      notify('Follow-up scheduled', 'The lead has been rescheduled.')
+      notify('Follow-up set', 'You will be reminded on the day.')
       queryClient.invalidateQueries({ queryKey: ['follow-ups'] })
       setRescheduleLead(null)
     },
     onError: (err) => {
-      notify('Could not reschedule', apiError(err))
+      notify('Could not set the follow-up', apiError(err))
     },
   })
 
@@ -127,10 +128,12 @@ export default function FollowUpsTab() {
         phone={item.phone}
         leadStatus={item.status}
         timeText={isOverdue ? overdueLabel(item.followUpAt) : tab === 'upcoming' ? formatDayTime(item.followUpAt) : formatTime(item.followUpAt)}
-        subtitle={isOverdue ? 'Overdue follow-up' : 'Scheduled follow-up'}
+        subtitle={isOverdue && item.followUpAt
+          ? `Was due ${new Date(item.followUpAt).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}`
+          : 'Scheduled follow-up'}
         lastMessage={conv?.lastMessage}
         lastMessageMine={conv?.lastMessageMine}
-        onChat={() => openChat(item.phone, name, item._id)}
+        onChat={() => openChat(item.phoneNormalized || item.phone, name, item._id)}
         onReschedule={() => handleReschedule(item)}
         onOpenDetails={() => openLead(item._id)}
       />
@@ -149,6 +152,13 @@ export default function FollowUpsTab() {
       />
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
+          <View style={{ marginBottom: 12 }}>
+            <AskAiBar context={{ screen: 'Follow-ups' }} suggestions={[
+              'Which of my follow-ups are due today, and what should I send each one?',
+              'Who on my overdue list wrote to us last?',
+              'Move all my overdue follow-ups with no reply to tomorrow',
+            ]} />
+          </View>
           <View style={{ flexDirection: 'row', gap: 4, backgroundColor: COLORS.control, borderRadius: 14, padding: 4 }}>
             {TABS.map((t) => {
               const active = tab === t.key
@@ -211,7 +221,7 @@ export default function FollowUpsTab() {
         <FollowUpSheet
           visible={!!rescheduleLead}
           current={rescheduleLead.current}
-          title={`Reschedule: ${rescheduleLead.name}`}
+          title={`Follow up: ${rescheduleLead.name}`}
           onSchedule={(iso) => scheduleFollowUpMutation.mutate({ id: rescheduleLead.id, iso })}
           onClose={() => setRescheduleLead(null)}
         />
