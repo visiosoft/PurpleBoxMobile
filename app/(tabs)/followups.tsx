@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { View, Text, FlatList, ActivityIndicator, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { leadApi, type FollowUpLeadRow } from '../../src/lib/leads'
+import { whatsappApi } from '../../src/lib/whatsapp'
 import { leadDisplayName } from '../../src/lib/leadStatus'
 import { apiError } from '../../src/lib/api'
 import { notify } from '../../src/lib/alert'
@@ -13,7 +14,9 @@ import PressableScale from '../../src/components/PressableScale'
 import ScreenHeader from '../../src/components/ScreenHeader'
 import SwipeableDashboardCard from '../../src/components/SwipeableDashboardCard'
 import FollowUpSheet from '../../src/components/FollowUpSheet'
-import { useDashboardDismissed } from '../../src/lib/dashboardDismissed'
+
+// Last 9 digits: a lead saved as 055… and its chat as 97155… are one person.
+const digitsOf = (p: string) => p.replace(/\D/g, '').slice(-9)
 
 type FuTab = 'today' | 'upcoming' | 'overdue'
 const TABS: { key: FuTab; label: string }[] = [
@@ -32,6 +35,12 @@ function formatTime(iso: string | null): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
+/** An upcoming follow-up is on another day, so it needs the day as well as the time. */
+function formatDayTime(iso: string | null): string {
+  if (!iso) return ''
+  return `${new Date(iso).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}, ${formatTime(iso)}`
+}
+
 function overdueLabel(iso: string | null): string {
   if (!iso) return 'Overdue'
   const hours = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 36e5))
@@ -46,13 +55,28 @@ export default function FollowUpsTab() {
   const [tab, setTab] = useState<FuTab>('today')
   const [manualRefreshing, setManualRefreshing] = useState(false)
   const [rescheduleLead, setRescheduleLead] = useState<{ id: string; name: string; current?: string | null } | null>(null)
-  const { dismissedSet, dismiss } = useDashboardDismissed()
-
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['follow-ups'],
     queryFn: leadApi.followUps,
     staleTime: 30_000,
   })
+  // Back from a chat, re-read: a message sent there clears the follow-up,
+  // and that — not having opened it — is what takes it off this list.
+  useFocusEffect(useCallback(() => { refetch() }, [refetch]))
+  const { data: convData } = useQuery({
+    queryKey: ['wa-conversations-dashboard'],
+    queryFn: () => whatsappApi.conversations({ limit: 40 }),
+    staleTime: 60_000,
+  })
+  const convMap = useMemo(() => {
+    const map = new Map<string, { lastMessage: string; lastMessageMine: boolean }>()
+    for (const c of convData?.list ?? []) {
+      if (!c.lastMessage) continue
+      const entry = { lastMessage: c.lastMessage, lastMessageMine: !!c.lastMessageMine }
+      for (const p of [c.phone, c.phoneNormalized]) if (p) map.set(digitsOf(p), entry)
+    }
+    return map
+  }, [convData])
 
   const scheduleFollowUpMutation = useMutation({
     mutationFn: ({ id, iso }: { id: string; iso: string }) => leadApi.scheduleFollowUp(id, iso),
@@ -76,43 +100,42 @@ export default function FollowUpsTab() {
   }
 
   const counts = { today: data?.today.length ?? 0, upcoming: data?.upcoming.length ?? 0, overdue: data?.overdue.length ?? 0 }
-  const rawList = data?.[tab] ?? []
-  const list = rawList.filter((f) => !dismissedSet.has(`fu_${tab}_${f._id}`))
+  const list = data?.[tab] ?? []
 
   const openLead = useCallback((id: string) => {
     router.push(`/leads/${id}`)
   }, [router])
 
-  const openChat = useCallback((phone: string, name: string, leadId: string, itemKey?: string) => {
-    if (itemKey) dismiss(itemKey)
+  const openChat = useCallback((phone: string, name: string, leadId: string) => {
     router.push({ pathname: '/whatsapp/[phone]', params: { phone, name, leadId } })
-  }, [router, dismiss])
+  }, [router])
 
   const handleReschedule = useCallback((item: FollowUpLeadRow) => {
     setRescheduleLead({ id: item._id, name: leadDisplayName(item), current: item.followUpAt })
   }, [])
 
   const renderItem = useCallback(({ item, index }: { item: FollowUpLeadRow; index: number }) => {
-    const itemKey = `fu_${tab}_${item._id}`
     const name = leadDisplayName(item)
     const isOverdue = tab === 'overdue' || (!!item.followUpAt && new Date(item.followUpAt).getTime() < Date.now())
+    const conv = convMap.get(digitsOf(item.phone))
     return (
       <SwipeableDashboardCard
-        id={itemKey}
+        id={`fu_${tab}_${item._id}`}
         index={index}
         type={isOverdue ? 'followup_overdue' : 'followup_today'}
         title={name}
         phone={item.phone}
         leadStatus={item.status}
-        timeText={isOverdue ? overdueLabel(item.followUpAt) : formatTime(item.followUpAt)}
+        timeText={isOverdue ? overdueLabel(item.followUpAt) : tab === 'upcoming' ? formatDayTime(item.followUpAt) : formatTime(item.followUpAt)}
         subtitle={isOverdue ? 'Overdue follow-up' : 'Scheduled follow-up'}
-        note="Tap to chat or swipe right / swipe left to reschedule"
-        onChat={() => openChat(item.phone, name, item._id, itemKey)}
+        lastMessage={conv?.lastMessage}
+        lastMessageMine={conv?.lastMessageMine}
+        onChat={() => openChat(item.phone, name, item._id)}
         onReschedule={() => handleReschedule(item)}
         onOpenDetails={() => openLead(item._id)}
       />
     )
-  }, [tab, openChat, handleReschedule, openLead])
+  }, [tab, openChat, handleReschedule, openLead, convMap])
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt }}>

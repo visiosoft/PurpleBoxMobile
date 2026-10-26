@@ -36,6 +36,19 @@ const STATUS_TONE: Record<string, keyof typeof TONE> = {
   already_customer: 'gray',
 }
 
+/** The server's own LOST_REASONS codes (PATCH /leads/:id/status refuses any
+ *  other), with the words a rep would use. */
+export const LOST_REASONS: { value: string; label: string }[] = [
+  { value: 'no_response', label: 'Stopped replying' },
+  { value: 'price', label: 'Price too high' },
+  { value: 'went_elsewhere', label: 'Went to another company' },
+  { value: 'timing', label: 'Not the right time' },
+  { value: 'wrong_size', label: "We don't have the size" },
+  { value: 'not_interested', label: 'Not interested' },
+  { value: 'wrong_number', label: 'Not a real enquiry' },
+  { value: 'other', label: 'Other' },
+]
+
 export function statusLabel(s: string): string {
   const found = LEAD_STATUS_FLOW.find((x) => x.value === s)
   if (found) return found.label

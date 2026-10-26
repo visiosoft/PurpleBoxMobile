@@ -1,6 +1,7 @@
 import { PermissionsAndroid, Platform } from 'react-native'
 import { requireOptionalNativeModule } from 'expo'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import Constants from 'expo-constants'
 import * as TaskManager from 'expo-task-manager'
 import * as BackgroundTask from 'expo-background-task'
 import { api, getStoredToken, getStoredUser } from './api'
@@ -26,7 +27,10 @@ type CallLogModule = {
 export type LeadCall = { id: string; leadId: string; name: string; direction: NativeCall['type']; durationSec: number; at: string }
 
 // Missing in Expo Go, on iOS and on the web — all of which simply don't sync.
-const CallLog = Platform.OS === 'android' ? requireOptionalNativeModule<CallLogModule>('CallLog') : null
+// Play Store builds are built without the permission (app.config.js), so they don't either.
+const CallLog = Platform.OS === 'android' && Constants.expoConfig?.extra?.callSync !== false
+  ? requireOptionalNativeModule<CallLogModule>('CallLog')
+  : null
 export const callSyncSupported = !!CallLog
 
 const TASK = 'pb-call-log-sync'

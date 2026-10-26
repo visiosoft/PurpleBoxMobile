@@ -286,7 +286,9 @@ function LeadCard({
           <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.lineSoft, borderRadius: 13, padding: 10 }}>
             <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Interested in</Text>
             <Text style={{ marginTop: 3, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }} numberOfLines={1}>
-              {lead.storageSizeValue} sqft · {lead.durationValue} {lead.durationUnit}{lead.durationValue === 1 ? '' : 's'}
+              {lead.storageSizeValue > 0
+                ? `${lead.storageSizeValue} sqft${lead.durationValue > 0 ? ` · ${lead.durationValue} ${lead.durationUnit}${lead.durationValue === 1 ? '' : 's'}` : ''}`
+                : 'Not asked yet'}
             </Text>
           </View>
           <View style={{ flex: 1, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.lineSoft, borderRadius: 13, padding: 10 }}>

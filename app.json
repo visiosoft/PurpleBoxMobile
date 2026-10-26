@@ -26,8 +26,6 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
         "android.permission.READ_CALL_LOG"
@@ -42,7 +40,12 @@
       "expo-font",
       "expo-splash-screen",
       "@react-native-community/datetimepicker",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": false
+        }
+      ],
       "expo-video",
       [
         "expo-speech-recognition",

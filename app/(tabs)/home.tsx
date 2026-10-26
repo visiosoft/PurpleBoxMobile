@@ -10,12 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../src/lib/auth'
 import { useNotifications } from '../../src/lib/notifications'
 import { notify } from '../../src/lib/alert'
-import { leadApi, type FollowUpLeadRow, type Lead } from '../../src/lib/leads'
+import { leadApi, markContacted, type FollowUpLeadRow, type Lead, type LeadStatus } from '../../src/lib/leads'
 import { whatsappApi } from '../../src/lib/whatsapp'
 import { leadDisplayName } from '../../src/lib/leadStatus'
 import {
@@ -31,7 +31,6 @@ import SwipeableDashboardCard, {
 } from '../../src/components/SwipeableDashboardCard'
 import FollowUpSheet from '../../src/components/FollowUpSheet'
 import CommandBarSection, { type CommandBarHandle } from '../../src/components/CommandBarSection'
-import { useDashboardDismissed } from '../../src/lib/dashboardDismissed'
 import { apiError } from '../../src/lib/api'
 
 type FilterCategory = 'all' | 'reminders' | 'followups' | 'new_leads'
@@ -55,7 +54,8 @@ interface DashboardFeedItem {
 }
 
 function normalizeDigits(p?: string | null): string {
-  return (p || '').replace(/\D/g, '')
+  // Last 9 digits: a lead saved as 055… and its chat as 97155… are one person.
+  return (p || '').replace(/\D/g, '').slice(-9)
 }
 
 function timeAgo(iso?: string | null): string {
@@ -71,6 +71,23 @@ function timeAgo(iso?: string | null): string {
 function formatTime(iso?: string | null): string {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+/** "Tue 28 Oct, 11:30 AM" — a reminder further out than today needs its day. */
+function formatDayTime(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const today = new Date()
+  const sameDay = d.toDateString() === today.toDateString()
+  const day = sameDay ? 'Today' : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
+  return `${day}, ${formatTime(iso)}`
+}
+
+/** "50 sqft · 6 months", or nothing when the size hasn't been asked yet (0) or is undecided (-1). */
+function sizeSummary(lead: Lead): string | undefined {
+  if (!(lead.storageSizeValue > 0)) return undefined
+  const duration = lead.durationValue > 0 ? ` · ${lead.durationValue} ${lead.durationUnit}${lead.durationValue === 1 ? '' : 's'}` : ''
+  return `${lead.storageSizeValue} sqft${duration}`
 }
 
 function overdueLabel(iso?: string | null): string {
@@ -100,8 +117,6 @@ export default function HomeTab() {
     name: string
     currentFollowUp?: string | null
   } | null>(null)
-
-  const { dismissedSet, dismiss, clearAll } = useDashboardDismissed()
 
   // The command bar itself (bar UI, typed/spoken input, ask/confirm/cancel,
   // the results view) lives in CommandBarSection now — shared with the
@@ -152,6 +167,18 @@ export default function HomeTab() {
     queryFn: () => whatsappApi.conversations({ limit: 40 }),
     staleTime: 60_000,
   })
+
+  // A card leaves the feed only when the lead itself changes (follow-up done
+  // or moved, status moved on) — so coming back from a chat re-reads it,
+  // rather than the card hiding just because it was opened.
+  useFocusEffect(
+    useCallback(() => {
+      refetchFollowUps()
+      refetchNewLeads()
+      refetchSiteVisits()
+      refetchConvs()
+    }, [refetchFollowUps, refetchNewLeads, refetchSiteVisits, refetchConvs]),
+  )
 
   // Reschedule mutation
   const scheduleFollowUpMutation = useMutation({
@@ -215,10 +242,7 @@ export default function HomeTab() {
           leadStatus: lead.status,
           timeText: lead.createdAt ? timeAgo(lead.createdAt) : 'New',
           subtitle: lead.source === 'whatsapp' ? 'WhatsApp Lead' : 'Assigned Lead',
-          note:
-            lead.notes ||
-            `${lead.storageSizeValue} sqft · ${lead.durationValue} ${lead.durationUnit}${lead.durationValue === 1 ? '' : 's'
-            }`,
+          note: lead.notes || sizeSummary(lead),
           lastMessage: conv?.lastMessage,
           lastMessageMine: conv?.lastMessageMine,
           followUpAt: lead.followUpAt,
@@ -242,7 +266,6 @@ export default function HomeTab() {
           leadStatus: f.status,
           timeText: overdueLabel(f.followUpAt),
           subtitle: 'Scheduled follow-up missed',
-          note: 'Customer waiting for follow-up response.',
           lastMessage: conv?.lastMessage,
           lastMessageMine: conv?.lastMessageMine,
           followUpAt: f.followUpAt,
@@ -252,8 +275,13 @@ export default function HomeTab() {
         })
       })
 
-      // C. Scheduled Site Visits (Important Reminders)
-      ; (siteVisitsPage?.data ?? []).forEach((lead: Lead) => {
+      // C. Scheduled Site Visits (Important Reminders) — today onwards only;
+      // a visit that already happened is not a reminder any more.
+      const startOfToday = new Date()
+      startOfToday.setHours(0, 0, 0, 0)
+      ; (siteVisitsPage?.data ?? [])
+        .filter((lead: Lead) => !!lead.siteVisitAt && new Date(lead.siteVisitAt).getTime() >= startOfToday.getTime())
+        .forEach((lead: Lead) => {
         const id = `site_visit_${lead._id}`
         const name = leadDisplayName(lead)
         const phone = lead.phoneNormalized || lead.phone
@@ -265,9 +293,9 @@ export default function HomeTab() {
           title: name,
           phone,
           leadStatus: lead.status,
-          timeText: lead.siteVisitAt ? formatTime(lead.siteVisitAt) : 'Upcoming',
+          timeText: formatDayTime(lead.siteVisitAt),
           subtitle: 'Site visit scheduled',
-          note: lead.notes || `${lead.storageSizeValue} sqft storage requirement`,
+          note: lead.notes || sizeSummary(lead),
           lastMessage: conv?.lastMessage,
           lastMessageMine: conv?.lastMessageMine,
           followUpAt: lead.followUpAt,
@@ -291,7 +319,6 @@ export default function HomeTab() {
           leadStatus: f.status,
           timeText: formatTime(f.followUpAt),
           subtitle: 'Follow-up due today',
-          note: 'Check in on storage decision or quote.',
           lastMessage: conv?.lastMessage,
           lastMessageMine: conv?.lastMessageMine,
           followUpAt: f.followUpAt,
@@ -311,10 +338,7 @@ export default function HomeTab() {
     })
   }, [followUps, siteVisitsPage, newLeadsPage, convMap])
 
-  // Filter out dismissed items
-  const activeFeedItems = useMemo(() => {
-    return allFeedItems.filter((item) => !dismissedSet.has(item.id))
-  }, [allFeedItems, dismissedSet])
+  const activeFeedItems = allFeedItems
 
   // Apply Category Tab Filter
   const filteredFeedItems = useMemo(() => {
@@ -336,14 +360,8 @@ export default function HomeTab() {
     }
   }, [activeFeedItems])
 
-  const dismissedCount = allFeedItems.length - activeFeedItems.length
-
   // Action handlers
-  const handleStartChatAndDismiss = async (item: DashboardFeedItem) => {
-    // Dismiss item from dashboard so it goes away
-    await dismiss(item.id)
-
-    // Navigate to WhatsApp chat
+  const handleStartChat = (item: DashboardFeedItem) => {
     router.push({
       pathname: '/whatsapp/[phone]',
       params: {
@@ -383,40 +401,66 @@ export default function HomeTab() {
 
   // A plain-English reason built from the same data already on screen — not
   // AI-written, so it can never say something the data doesn't support.
+  // Who wrote last is the one fact that changes what to do next.
   function whyNowFor(item: DashboardFeedItem): string {
+    const lastWord = !item.lastMessage
+      ? 'No WhatsApp conversation yet.'
+      : item.lastMessageMine
+        ? 'Your last message has had no reply.'
+        : 'The customer wrote last and is waiting for you.'
     switch (item.type) {
       case 'new_lead':
-        return `New enquiry, not yet contacted${item.note ? ` — ${item.note}` : ''}.`
+        return `New enquiry, not contacted yet. ${lastWord}`
       case 'followup_overdue':
-        return `Follow-up is ${item.timeText.toLowerCase()} and nothing has gone out since.`
+        return `Follow-up is ${item.timeText.toLowerCase()}. ${lastWord}`
       case 'followup_today':
-        return "Today's follow-up — the customer is expecting to hear from you."
+        return `Follow-up due today. ${lastWord}`
       case 'reminder':
-        return `Site visit ${item.timeText ? `at ${item.timeText}` : 'coming up'} — worth a check-in beforehand.`
+        return `Site visit ${item.timeText}. ${lastWord}`
       default:
-        return ''
+        return lastWord
     }
   }
 
-  // A starting point, not a final draft — the rep edits or sends as-is. Kept
-  // as a plain template rather than a per-tile AI call so opening the feed
-  // never fires a round of model calls just for being on screen; the
-  // contextual AI field below is where an actual AI request happens, and
-  // only when the rep asks for one.
-  function suggestedMessageFor(item: DashboardFeedItem): string {
-    const name = item.title.split(' ')[0] || item.title
-    if (item.type === 'new_lead') {
+  // Claude writes the suggestion for the one expanded tile only, from the
+  // lead's conversation and notes — so opening the feed never fires a round
+  // of model calls just for being on screen. Cached per lead for 30 minutes.
+  const expandedItem = filteredFeedItems.find((i) => i.id === activeExpandedId)
+  const aiSuggestion = useQuery({
+    queryKey: ['suggest-message', expandedItem?.leadId],
+    queryFn: () => leadApi.suggestMessage(expandedItem!.leadId),
+    enabled: !!expandedItem?.leadId,
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  })
+
+  // Claude's draft once it arrives. Until then (or if Claude is unavailable)
+  // only a new lead gets a stock opener — for anyone already in a
+  // conversation a canned line reads worse than no suggestion.
+  function suggestedMessageFor(item: DashboardFeedItem): string | undefined {
+    if (item.id === expandedItem?.id && aiSuggestion.data) return aiSuggestion.data
+    if (item.type === 'new_lead' && !item.lastMessage) {
+      const name = item.title.split(' ')[0] || item.title
       return `Hi ${name}, thanks for reaching out about storage! Could you share roughly what size you need and when you'd like to start?`
     }
-    if (item.type === 'followup_overdue' || item.type === 'followup_today') {
-      return `Hi ${name}, just following up${item.note ? ` on ${item.note}` : ''} — would you like me to help you take the next step?`
-    }
-    return `Hi ${name}, looking forward to your visit — let me know if the timing still works for you.`
+    return aiSuggestion.isFetching ? '' : undefined
   }
 
+  // Sent from here it counts exactly as if sent from the chat: the due
+  // follow-up is done and a New lead becomes Contact Attempted, so the card
+  // drops out of the feed on the refetch.
   const sendSuggested = useMutation({
-    mutationFn: ({ phone, text }: { phone: string; text: string; name: string }) => whatsappApi.send(phone, text),
-    onSuccess: (_res, { name }) => notify('Sent', `Your message to ${name} is on its way.`),
+    mutationFn: async ({ item, text }: { item: DashboardFeedItem; text: string }) => {
+      await whatsappApi.send(item.phone, text)
+      await markContacted({ id: item.leadId, status: item.leadStatus as LeadStatus, followUpAt: item.followUpAt })
+    },
+    onSuccess: (_res, { item }) => {
+      notify('Sent', `Your message to ${item.title} is on its way.`)
+      queryClient.invalidateQueries({ queryKey: ['follow-ups'] })
+      queryClient.invalidateQueries({ queryKey: ['leads-assigned-new'] })
+      queryClient.invalidateQueries({ queryKey: ['wa-conversations-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] })
+    },
     onError: (e) => notify('Could not send', apiError(e)),
   })
 
@@ -443,22 +487,23 @@ export default function HomeTab() {
           timeText={item.timeText}
           phone={item.phone}
           leadStatus={item.leadStatus}
-          onChat={() => handleStartChatAndDismiss(item)}
+          onChat={() => handleStartChat(item)}
           onReschedule={() => handleReschedule(item)}
           onOpenDetails={() => handleOpenDetails(item.leadId)}
           expanded={expanded}
           onToggleExpand={() => toggleExpand(item.id)}
           whyNow={expanded ? whyNowFor(item) : undefined}
           suggestedMessage={expanded ? suggestedMessageFor(item) : undefined}
+          suggestionLoading={expanded && aiSuggestion.isFetching}
           sendingMessage={sendSuggested.isPending}
-          onSendSuggested={(text) => sendSuggested.mutate({ phone: item.phone, text, name: item.title })}
+          onSendSuggested={(text) => sendSuggested.mutate({ item, text })}
           aiValue={tileAiValue}
           onChangeAi={setTileAiValue}
           onSubmitAi={() => submitTileAi(item)}
         />
       )
     },
-    [handleReschedule, handleOpenDetails, activeExpandedId, tileAiValue, sendSuggested.isPending]
+    [handleReschedule, handleOpenDetails, activeExpandedId, tileAiValue, sendSuggested.isPending, aiSuggestion.data, aiSuggestion.isFetching]
   )
 
   const isLoading = isLoadingFollowUps || isLoadingNewLeads || isLoadingSiteVisits
@@ -516,7 +561,7 @@ export default function HomeTab() {
 
             <View style={{ flexDirection: 'row', gap: 7 }}>
               <PressableScale
-                onPress={() => notify('Notifications', 'All your urgent reminders are right below.')}
+                onPress={() => setFilter('reminders')}
                 style={{
                   width: 38,
                   height: 38,
@@ -736,31 +781,6 @@ export default function HomeTab() {
                   ? "You've contacted or cleared all assigned leads and follow-ups. Pull down anytime to check for new items."
                   : 'You have no items in this filter category.'}
               </Text>
-
-              {dismissedCount > 0 && (
-                <PressableScale
-                  onPress={clearAll}
-                  style={{
-                    marginTop: 14,
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                    borderRadius: 10,
-                    backgroundColor: COLORS.purple50,
-                    borderWidth: 1,
-                    borderColor: COLORS.purple200,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: FONTS.bodyBold,
-                      fontSize: 12,
-                      color: COLORS.purple600,
-                    }}
-                  >
-                    Restore {dismissedCount} dismissed {dismissedCount === 1 ? 'item' : 'items'}
-                  </Text>
-                </PressableScale>
-              )}
             </View>
           </ScrollView>
         ) : (
@@ -781,41 +801,6 @@ export default function HomeTab() {
                 colors={[COLORS.purple600]}
                 tintColor={COLORS.purple600}
               />
-            }
-            ListFooterComponent={
-              dismissedCount > 0 ? (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginTop: 8,
-                    paddingHorizontal: 6,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: FONTS.body,
-                      fontSize: 11.5,
-                      color: COLORS.ink3,
-                    }}
-                  >
-                    {dismissedCount} {dismissedCount === 1 ? 'item' : 'items'} dismissed from
-                    dashboard
-                  </Text>
-                  <PressableScale onPress={clearAll}>
-                    <Text
-                      style={{
-                        fontFamily: FONTS.bodyBold,
-                        fontSize: 11.5,
-                        color: COLORS.purple600,
-                      }}
-                    >
-                      Reset all
-                    </Text>
-                  </PressableScale>
-                </View>
-              ) : null
             }
           />
         )}

@@ -26,6 +26,8 @@ import PickerSheet from '../../../src/components/PickerSheet'
 import FollowUpSheet from '../../../src/components/FollowUpSheet'
 import QuickRepliesSheet from '../../../src/components/whatsapp/QuickRepliesSheet'
 import UnitSizeSheet from '../../../src/components/UnitSizeSheet'
+import QuoteSheet from '../../../src/components/QuoteSheet'
+import LostReasonSheet from '../../../src/components/LostReasonSheet'
 import ContactedNoteSheet from '../../../src/components/ContactedNoteSheet'
 import PressableScale from '../../../src/components/PressableScale'
 
@@ -75,6 +77,10 @@ export default function ChatThreadScreen() {
   const [followUpOpen, setFollowUpOpen] = useState(false)
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
   const [unitSizeOpen, setUnitSizeOpen] = useState(false)
+  const [quoteOpen, setQuoteOpen] = useState(false)
+  const [lostOpen, setLostOpen] = useState(false)
+  // When this chat was opened — "is the visit still ahead" is read against it.
+  const [openedAt] = useState(() => Date.now())
   const [contactedNoteOpen, setContactedNoteOpen] = useState(false)
   const [siteVisitOpen, setSiteVisitOpen] = useState(false)
   const [ownerOpen, setOwnerOpen] = useState(false)
@@ -114,6 +120,11 @@ export default function ChatThreadScreen() {
   const changeStatus = useMutation({
     mutationFn: ({ status, comment }: { status: LeadStatus; comment?: string }) => leadApi.updateStatus(leadId!, status, comment),
     onSuccess: invalidateLead,
+    onError: (e) => notify('Could not update status', apiError(e)),
+  })
+  const markLost = useMutation({
+    mutationFn: (reason: string) => leadApi.markLost(leadId!, reason),
+    onSuccess: () => { setLostOpen(false); invalidateLead() },
     onError: (e) => notify('Could not update status', apiError(e)),
   })
   const scheduleFollowUp = useMutation({
@@ -160,7 +171,14 @@ export default function ChatThreadScreen() {
   }
   const scheduleSiteVisit = useMutation({
     mutationFn: (iso: string) => leadApi.scheduleSiteVisit(leadId!, iso),
-    onSuccess: invalidateLead,
+    // A booked visit is the stage, so the board shows it — forward only,
+    // never back from a quote, a win or a loss.
+    onSuccess: () => {
+      invalidateLead()
+      if (lead && ['new', 'contact_attempted', 'contacted', 'follow_up_scheduled'].includes(lead.status)) {
+        changeStatus.mutate({ status: 'site_visit_scheduled' })
+      }
+    },
     onError: (e) => notify('Could not schedule site visit', apiError(e)),
   })
   const updateUnitSize = useMutation({
@@ -303,6 +321,14 @@ export default function ChatThreadScreen() {
   }, [phone, messages])
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['wa-messages', phone] })
+
+  // Claude reads this conversation, the lead's details and the real price
+  // sheet, and the draft lands in the message box — the rep edits and sends.
+  const draftReply = useMutation({
+    mutationFn: () => leadApi.suggestMessage(leadId!),
+    onSuccess: (message) => { setDraft(message); setSendErr('') },
+    onError: (e) => setSendErr(apiError(e)),
+  })
 
   const sendText = useMutation({
     mutationFn: (body: string) => whatsappApi.send(phone, body),
@@ -511,20 +537,45 @@ export default function ChatThreadScreen() {
                 </Text>
               </View>
             </PressableScale>
+            {/* A visit is booked straight from here, with the day and time agreed
+                in the chat — not only by way of a status change. */}
+            <PressableScale
+              onPress={() => setSiteVisitOpen(true)}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+            >
+              <Ionicons name="location-outline" size={15} color={COLORS.ink3} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Visit</Text>
+                <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.ink }}>
+                  {lead.siteVisitAt && new Date(lead.siteVisitAt).getTime() > openedAt - 86400_000
+                    ? new Date(lead.siteVisitAt).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+                    : 'Book'}
+                </Text>
+              </View>
+            </PressableScale>
           </View>
-          <PressableScale
-            onPress={() => setUnitSizeOpen(true)}
-            style={{ height: 38, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
-          >
-            <Ionicons name="cube-outline" size={15} color={COLORS.ink3} />
-            <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Unit</Text>
-            <Text numberOfLines={1} style={{ flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }}>
-              {lead.storageSizeValue > 0
-                ? `${lead.storageSizeValue} sqft · ${lead.durationValue} ${lead.durationUnit}${lead.durationValue === 1 ? '' : 's'}`
-                : 'Not set — tap to add'}
-            </Text>
-            <Ionicons name="chevron-forward" size={14} color={COLORS.faint} />
-          </PressableScale>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <PressableScale
+              onPress={() => setUnitSizeOpen(true)}
+              style={{ flex: 1, minWidth: 0, height: 38, borderRadius: 13, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.surfaceAlt, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+            >
+              <Ionicons name="cube-outline" size={15} color={COLORS.ink3} />
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.ink4 }}>Unit</Text>
+              <Text numberOfLines={1} style={{ flex: 1, fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink }}>
+                {lead.storageSizeValue > 0
+                  ? `${lead.storageSizeValue} sqft · ${lead.durationValue} ${lead.durationUnit}${lead.durationValue === 1 ? '' : 's'}`
+                  : 'Not set — tap to add'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.faint} />
+            </PressableScale>
+            <PressableScale
+              onPress={() => setQuoteOpen(true)}
+              style={{ height: 38, borderRadius: 13, backgroundColor: COLORS.brand, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14 }}
+            >
+              <Ionicons name="document-text-outline" size={15} color="#fff" />
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: '#fff' }}>Quote</Text>
+            </PressableScale>
+          </View>
           {isAdmin && (
             <PressableScale
               onPress={() => setOwnerOpen(true)}
@@ -665,6 +716,18 @@ export default function ChatThreadScreen() {
                 <Ionicons name="flash-outline" size={20} color={COLORS.brand} />
               </PressableScale>
             )}
+            {!!leadId && (
+              <PressableScale
+                onPress={() => draftReply.mutate()}
+                disabled={sending || draftReply.isPending}
+                accessibilityLabel="Draft a reply with AI"
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.purple100, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {draftReply.isPending
+                  ? <ActivityIndicator size="small" color={COLORS.brand} />
+                  : <Ionicons name="sparkles" size={18} color={COLORS.brand} />}
+              </PressableScale>
+            )}
             <TextInput
               value={draft}
               onChangeText={setDraft}
@@ -712,9 +775,16 @@ export default function ChatThreadScreen() {
               // Contacted is the one change worth a note — captured before
               // the status actually changes, both folded into one request.
               if (s === 'contacted') { setContactedNoteOpen(true); return }
+              if (s === 'lost') { setLostOpen(true); return }
               changeStatus.mutate({ status: s })
             }}
             onClose={() => setStatusOpen(false)}
+          />
+          <LostReasonSheet
+            visible={lostOpen}
+            leadId={leadId}
+            onSelect={(reason) => markLost.mutate(reason)}
+            onClose={() => setLostOpen(false)}
           />
           <FollowUpSheet
             visible={followUpOpen}
@@ -748,6 +818,24 @@ export default function ChatThreadScreen() {
               durationUnit={lead.durationUnit}
               onSave={(v) => updateUnitSize.mutate(v)}
               onClose={() => setUnitSizeOpen(false)}
+            />
+          )}
+          {/* Mounted only while open, so each opening starts from the lead's current size. */}
+          {!!leadId && lead && quoteOpen && (
+            <QuoteSheet
+              visible
+              leadId={leadId}
+              customerName={name || phone}
+              storageSizeValue={lead.storageSizeValue}
+              durationValue={lead.durationValue}
+              durationUnit={lead.durationUnit}
+              onSent={(message) => {
+                setQuoteOpen(false)
+                invalidate()
+                invalidateLead()
+                notify('Quote', message)
+              }}
+              onClose={() => setQuoteOpen(false)}
             />
           )}
           {isAdmin && (

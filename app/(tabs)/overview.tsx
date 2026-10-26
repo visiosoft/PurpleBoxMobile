@@ -94,12 +94,6 @@ export default function OverviewTab() {
                 )}
               </View>
             )}
-
-            <View style={{ marginTop: 20, padding: 18, borderRadius: RADII.card, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center' }}>
-              <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.ink3, textAlign: 'center', lineHeight: 19 }}>
-                Per-rep performance and team roster are coming soon here.
-              </Text>
-            </View>
           </ScrollView>
         </CommandBarSection>
       </View>

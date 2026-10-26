@@ -44,6 +44,8 @@ export interface DashboardCardProps {
     onToggleExpand?: () => void
     whyNow?: string
     suggestedMessage?: string
+    /** Claude is still writing the suggestion. */
+    suggestionLoading?: boolean
     sendingMessage?: boolean
     onSendSuggested?: (text: string) => void
     aiValue?: string
@@ -72,6 +74,7 @@ function SwipeableDashboardCard({
     onToggleExpand,
     whyNow,
     suggestedMessage,
+    suggestionLoading,
     sendingMessage,
     onSendSuggested,
     aiValue = '',
@@ -319,12 +322,20 @@ function SwipeableDashboardCard({
                                     {phone}
                                 </Text>
 
-                                {(lastMessage || note) ? (
+                                {/* The WhatsApp line is only ever the real last message, and says
+                                    who sent it; a lead note shows plainly, never dressed as a chat. */}
+                                {lastMessage ? (
                                     <View style={styles.messageRow}>
                                         <Ionicons name="logo-whatsapp" size={12} color={COLORS.whatsapp} />
                                         <Text style={styles.messageText} numberOfLines={1}>
-                                            {lastMessage || note}
+                                            {lastMessageMine ? <Text style={styles.messageWho}>You: </Text> : null}
+                                            {lastMessage}
                                         </Text>
+                                    </View>
+                                ) : note ? (
+                                    <View style={styles.messageRow}>
+                                        <Ionicons name="document-text-outline" size={12} color={COLORS.ink4} />
+                                        <Text style={styles.messageText} numberOfLines={1}>{note}</Text>
                                     </View>
                                 ) : null}
                             </View>
@@ -350,8 +361,13 @@ function SwipeableDashboardCard({
 
                             {suggestedMessage !== undefined && (
                                 <View style={styles.suggestBox}>
-                                    <Text style={styles.suggestLabel}>+ SUGGESTED · WHATSAPP</Text>
-                                    {editingSuggestion ? (
+                                    <Text style={styles.suggestLabel}>SUGGESTED REPLY · WHATSAPP</Text>
+                                    {suggestionLoading && !editingSuggestion ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <ActivityIndicator size="small" color={COLORS.brandDark} />
+                                            <Text style={styles.suggestText}>Writing a message…</Text>
+                                        </View>
+                                    ) : editingSuggestion ? (
                                         <TextInput
                                             value={suggestionDraft}
                                             onChangeText={setSuggestionDraft}
@@ -364,7 +380,7 @@ function SwipeableDashboardCard({
                                     )}
                                     <View style={styles.suggestActions}>
                                         <PressableScale
-                                            disabled={sendingMessage || !suggestionDraft.trim()}
+                                            disabled={sendingMessage || suggestionLoading || !suggestionDraft.trim()}
                                             onPress={() => onSendSuggested?.(suggestionDraft)}
                                             style={styles.sendButton}
                                         >
@@ -530,6 +546,10 @@ const styles = StyleSheet.create({
         fontSize: 13,
         lineHeight: 17,
         color: COLORS.ink2,
+    },
+    messageWho: {
+        fontFamily: FONTS.bodyBold,
+        color: COLORS.ink3,
     },
     statusDot: {
         width: 8,

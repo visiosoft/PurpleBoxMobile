@@ -1,4 +1,7 @@
-import { Modal, View, Text, Pressable } from 'react-native'
+import { useState } from 'react'
+import { Modal, View, Text, Pressable, Platform } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
+import { Ionicons } from '@expo/vector-icons'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../lib/theme'
 import { LinearGradient } from 'expo-linear-gradient'
 import PressableScale from './PressableScale'
@@ -24,6 +27,11 @@ const PRESETS: { key: string; label: string }[] = [
 export default function FollowUpSheet({
   visible, current, onSchedule, onClose, title = 'Schedule follow-up',
 }: { visible: boolean; current?: string | null; onSchedule: (iso: string) => void; onClose: () => void; title?: string }) {
+  // The presets stay the fast path; an exact day and time is for what the
+  // customer actually agreed ("Saturday at 11"), which no preset can say.
+  const [picking, setPicking] = useState<null | 'date' | 'time'>(null)
+  const [pickedDay, setPickedDay] = useState<Date | null>(null)
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,8,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
@@ -49,7 +57,45 @@ export default function FollowUpSheet({
                 </LinearGradient>
               </PressableScale>
             ))}
+            <PressableScale
+              onPress={() => setPicking('date')}
+              style={{
+                paddingVertical: 13, borderRadius: 14, borderWidth: 1.5, borderColor: COLORS.purple200, backgroundColor: COLORS.purple50,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <Ionicons name="calendar-outline" size={16} color={COLORS.purple600} />
+              <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.purple600 }}>Pick a date & time</Text>
+            </PressableScale>
           </View>
+          {picking === 'date' && (
+            <DateTimePicker
+              value={current ? new Date(current) : new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              minimumDate={new Date()}
+              onChange={(event, date) => {
+                if (event.type !== 'set' || !date) { setPicking(null); return }
+                setPickedDay(date)
+                setPicking('time')
+              }}
+            />
+          )}
+          {picking === 'time' && pickedDay && (
+            <DateTimePicker
+              value={(() => { const d = new Date(pickedDay); d.setHours(10, 0, 0, 0); return d })()}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minuteInterval={15}
+              onChange={(event, time) => {
+                setPicking(null)
+                if (event.type !== 'set' || !time) return
+                const at = new Date(pickedDay)
+                at.setHours(time.getHours(), time.getMinutes(), 0, 0)
+                onSchedule(at.toISOString())
+              }}
+            />
+          )}
         </Pressable>
       </Pressable>
     </Modal>

@@ -15,7 +15,19 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "STORE_BUILD": "1"
+      }
+    },
+    "production-apk": {
+      "extends": "production",
+      "env": {
+        "STORE_BUILD": "0"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

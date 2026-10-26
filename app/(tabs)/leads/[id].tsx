@@ -13,6 +13,7 @@ import { notify, confirmAction } from '../../../src/lib/alert'
 import { useAuth } from '../../../src/lib/auth'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, RADII, SHADOWS } from '../../../src/lib/theme'
 import PickerSheet from '../../../src/components/PickerSheet'
+import LostReasonSheet from '../../../src/components/LostReasonSheet'
 import PressableScale from '../../../src/components/PressableScale'
 import ScoreSheet from '../../../src/components/whatsapp/ScoreSheet'
 
@@ -23,7 +24,6 @@ const OUTCOME_LABEL: Record<AttemptOutcome, string> = {
 const CHANNEL_LABEL: Record<AttemptChannel, string> = {
   call: 'Call', whatsapp: 'WhatsApp', voice_note: 'Voice note', email: 'Email', sms: 'SMS', walk_in: 'Walk-in', other: 'Other',
 }
-const LOST_REASONS = ['Price too high', 'Customer not interested', 'Competitor', 'No response', 'Wrong enquiry', 'Other'] as const
 const TIMELINE_ICON: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; chip: string }> = {
   created: { icon: 'person-add-outline', color: COLORS.purple600, chip: COLORS.purple50 },
   updated: { icon: 'create-outline', color: COLORS.ink3, chip: COLORS.surfaceAlt },
@@ -70,8 +70,8 @@ export default function LeadDetailScreen() {
   })
 
   const markLost = useMutation({
-    mutationFn: (reason: string) => leadApi.updateStatus(id, 'lost', reason),
-    onSuccess: invalidate,
+    mutationFn: (reason: string) => leadApi.markLost(id, reason),
+    onSuccess: () => { setLostPickerOpen(false); invalidate() },
     onError: (e) => notify('Could not update status', apiError(e)),
   })
 
@@ -362,13 +362,12 @@ export default function LeadDetailScreen() {
         title="Change status"
         options={LEAD_STATUS_FLOW}
         selected={lead.status}
-        onSelect={(s) => changeStatus.mutate(s)}
+        onSelect={(s) => (s === 'lost' ? setLostPickerOpen(true) : changeStatus.mutate(s))}
         onClose={() => setStatusPickerOpen(false)}
       />
-      <PickerSheet
+      <LostReasonSheet
         visible={lostPickerOpen}
-        title="Why was this lead lost?"
-        options={LOST_REASONS.map((r) => ({ value: r, label: r }))}
+        leadId={lead._id}
         onSelect={(reason) => markLost.mutate(reason)}
         onClose={() => setLostPickerOpen(false)}
       />

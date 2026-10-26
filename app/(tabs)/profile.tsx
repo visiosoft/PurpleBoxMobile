@@ -4,8 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../src/lib/auth'
-import { useNotifications } from '../../src/lib/notifications'
-import { notify, confirmAction } from '../../src/lib/alert'
+import { confirmAction } from '../../src/lib/alert'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 
@@ -27,7 +26,6 @@ const ROLE_META: Record<string, { label: string; hint: string }> = {
 export default function ProfileTab() {
   const router = useRouter()
   const { user, logout } = useAuth()
-  const { count: notifCount } = useNotifications()
   const isAdmin = user?.role === 'admin'
   const role = ROLE_META[user?.role ?? ''] ?? ROLE_META.sales_rep
 
@@ -35,27 +33,15 @@ export default function ProfileTab() {
     confirmAction('Sign out', 'You can sign back in any time with the same account.', 'Sign out', () => logout(), { destructive: true })
   }
 
-  async function handleTestNotification() {
-    try {
-      const push = await import('../../src/lib/pushNotifications')
-      const token = await push.registerForPushNotificationsAsync()
-      await push.sendLocalTestNotification()
-      notify('Test Notification Sent', token ? `Push token registered:\n${token.slice(0, 24)}...` : 'Notification triggered locally on device.')
-    } catch {
-      notify('Notifications', 'Testing push notification...')
-    }
-  }
-
+  // Only rows that do something real: no test buttons, no "coming soon".
+  // Assigning leads lives on each chat's Owner field until it has a screen
+  // of its own that works.
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; badge?: string; onPress: () => void }[] = [
-    { key: 'notifications', label: 'Test Notification & Status', icon: 'notifications-outline', badge: notifCount > 0 ? String(notifCount) : 'Test', onPress: handleTestNotification },
-    { key: 'performance', label: 'My performance', icon: 'trending-up-outline', onPress: () => notify('My performance', 'Performance report coming soon.') },
+    { key: 'units', label: 'Unit prices & availability', icon: 'cube-outline', onPress: () => router.push('/units') },
+    { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
     ...(isAdmin ? [
       { key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') },
-      { key: 'assign', label: 'Assign leads', icon: 'swap-horizontal-outline' as const, onPress: () => router.push('/assign') },
     ] : []),
-    { key: 'units', label: 'Search Unit', icon: 'cube-outline', onPress: () => router.push('/units') },
-    { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
-    { key: 'permissions', label: 'Permissions', icon: 'shield-checkmark-outline', badge: isAdmin ? 'Full' : 'Limited', onPress: () => notify('Permissions', isAdmin ? 'Admin: full access' : 'Rep: assigned leads only') },
     { key: 'signout', label: 'Sign out', icon: 'log-out-outline', onPress: confirmLogout },
   ]
 

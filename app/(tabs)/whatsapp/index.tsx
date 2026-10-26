@@ -130,13 +130,7 @@ export default function WhatsAppListScreen() {
       <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.line }}>
         <SafeAreaView edges={['top']}>
           <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontFamily: FONTS.display, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink }}>WhatsApp</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.successTint, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E' }} />
-                <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 11.5, color: COLORS.success }}>Connected</Text>
-              </View>
-            </View>
+            <Text style={{ fontFamily: FONTS.display, fontSize: 26, letterSpacing: -0.5, color: COLORS.ink }}>WhatsApp</Text>
 
             <View
               style={{
