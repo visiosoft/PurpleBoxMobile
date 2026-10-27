@@ -26,7 +26,6 @@ import PickerSheet from '../../../src/components/PickerSheet'
 import FollowUpSheet from '../../../src/components/FollowUpSheet'
 import QuickRepliesSheet from '../../../src/components/whatsapp/QuickRepliesSheet'
 import UnitSizeSheet from '../../../src/components/UnitSizeSheet'
-import QuoteSheet from '../../../src/components/QuoteSheet'
 import LostReasonSheet from '../../../src/components/LostReasonSheet'
 import ContactedNoteSheet from '../../../src/components/ContactedNoteSheet'
 import PressableScale from '../../../src/components/PressableScale'
@@ -79,7 +78,6 @@ export default function ChatThreadScreen() {
   const [followUpOpen, setFollowUpOpen] = useState(false)
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
   const [unitSizeOpen, setUnitSizeOpen] = useState(false)
-  const [quoteOpen, setQuoteOpen] = useState(false)
   const [lostOpen, setLostOpen] = useState(false)
   // When this chat was opened — "is the visit still ahead" is read against it.
   const [openedAt] = useState(() => Date.now())
@@ -595,7 +593,7 @@ export default function ChatThreadScreen() {
               <Ionicons name="chevron-forward" size={14} color={COLORS.faint} />
             </PressableScale>
             <PressableScale
-              onPress={() => setQuoteOpen(true)}
+              onPress={() => router.push({ pathname: '/book', params: { leadId: lead._id } })}
               style={{ height: 38, borderRadius: 13, backgroundColor: COLORS.brand, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14 }}
             >
               <Ionicons name="document-text-outline" size={15} color="#fff" />
@@ -844,24 +842,6 @@ export default function ChatThreadScreen() {
               durationUnit={lead.durationUnit}
               onSave={(v) => updateUnitSize.mutate(v)}
               onClose={() => setUnitSizeOpen(false)}
-            />
-          )}
-          {/* Mounted only while open, so each opening starts from the lead's current size. */}
-          {!!leadId && lead && quoteOpen && (
-            <QuoteSheet
-              visible
-              leadId={leadId}
-              customerName={name || phone}
-              storageSizeValue={lead.storageSizeValue}
-              durationValue={lead.durationValue}
-              durationUnit={lead.durationUnit}
-              onSent={(message) => {
-                setQuoteOpen(false)
-                invalidate()
-                invalidateLead()
-                notify('Quote', message)
-              }}
-              onClose={() => setQuoteOpen(false)}
             />
           )}
           {isAdmin && (

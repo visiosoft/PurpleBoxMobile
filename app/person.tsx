@@ -11,7 +11,6 @@ import { apiError } from '../src/lib/api'
 import { COLORS, FONTS, SHADOWS } from '../src/lib/theme'
 import PressableScale from '../src/components/PressableScale'
 import { AiSheet } from '../src/components/AskAiBar'
-import BookUnitSheet from '../src/components/BookUnitSheet'
 
 /**
  * One person, whatever they are to us: the lead, the tenant, or both — and
@@ -49,7 +48,6 @@ export default function PersonScreen() {
   const isAdmin = user?.role === 'admin'
   const [filter, setFilter] = useState<Filter>('all')
   const [aiOpen, setAiOpen] = useState(false)
-  const [bookOpen, setBookOpen] = useState(false)
 
   const by = { phone: params.phone || undefined, leadId: params.leadId || undefined, customerId: params.customerId || undefined }
   const { data: p, isLoading, isError, error, refetch, isRefetching } = useQuery({
@@ -90,7 +88,10 @@ export default function PersonScreen() {
             <Action icon="logo-whatsapp" label="Chat" tint={COLORS.success} onPress={openChat} />
             <Action icon="call-outline" label="Call" tint={COLORS.purple600} onPress={() => Linking.openURL(`tel:+${p.phone}`)} />
             <Action icon="sparkles-outline" label="Ask AI" tint={COLORS.purple600} onPress={() => setAiOpen(true)} />
-            <Action icon="key-outline" label="Book" tint={COLORS.purple600} onPress={() => setBookOpen(true)} />
+            {/* Booked only from a lead, and only by whoever can work that lead. */}
+            {!!lead && canOpenLead(lead) && (
+              <Action icon="key-outline" label="Book" tint={COLORS.purple600} onPress={() => router.push({ pathname: '/book', params: { leadId: lead._id } })} />
+            )}
           </View>
         )}
       </View>
@@ -241,7 +242,6 @@ export default function PersonScreen() {
           ...(p?.customer ? ['What do they owe, and send them the invoice'] : ['Quote them for what they asked']),
         ]}
       />
-      <BookUnitSheet visible={bookOpen} onClose={() => setBookOpen(false)} customer={p ? { name: p.name, phone: p.phone, leadId: lead?._id } : undefined} />
     </View>
   )
 }

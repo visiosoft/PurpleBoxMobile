@@ -12,7 +12,6 @@ import { leadDisplayName } from '../../src/lib/leadStatus'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS, SHADOWS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 import AskAiBar, { AiSheet } from '../../src/components/AskAiBar'
-import BookUnitSheet, { type BookMode } from '../../src/components/BookUnitSheet'
 
 /**
  * The rep's dashboard. It used to be a feed of every lead card, which made
@@ -43,7 +42,6 @@ export default function HomeTab() {
   const { user } = useAuth()
   const { waiting } = useNotifications()
   const [refreshing, setRefreshing] = useState(false)
-  const [book, setBook] = useState<BookMode | null>(null)
   const [aiQuestion, setAiQuestion] = useState<string | null>(null)
 
   const { data: followUps, refetch: refetchFollowUps } = useQuery({
@@ -159,8 +157,7 @@ export default function HomeTab() {
         <View>
           <SectionTitle>Quick actions</SectionTitle>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            <ActionTile icon="key-outline" label="Book a unit" onPress={() => setBook('contract')} />
-            <ActionTile icon="document-text-outline" label="New quote" onPress={() => setBook('quote')} />
+            <ActionTile icon="key-outline" label="Quote & book" onPress={() => router.push('/book-lead')} />
             <ActionTile icon="search-outline" label="Check availability" onPress={() => router.push('/units')} />
             <ActionTile icon="person-outline" label="Find a customer" onPress={() => router.push('/customers')} />
             <ActionTile icon="list-outline" label="Plan my day" onPress={() => setAiQuestion('Plan my day: who is waiting for my reply, which follow-ups are due today, and what should I send each one?')} />
@@ -190,7 +187,6 @@ export default function HomeTab() {
         )}
       </ScrollView>
 
-      <BookUnitSheet visible={!!book} mode={book ?? 'contract'} onClose={() => setBook(null)} />
       <AiSheet visible={!!aiQuestion} initialQuestion={aiQuestion || undefined} onClose={() => setAiQuestion(null)} context={{ screen: 'Dashboard' }} />
     </View>
   )

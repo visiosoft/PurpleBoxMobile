@@ -60,6 +60,11 @@ export interface Lead {
   storageSizeUnit: 'sqft'
   durationValue: number
   durationUnit: 'week' | 'month'
+  /** When they need it from, and whether a rep confirmed how long — the
+   *  booking wizard starts from these, as the web's does. */
+  storageStartAt?: string | null
+  intendedStartDate?: string | null
+  lengthOfStayConfirmedAt?: string | null
   owner: { _id: string; name: string; email: string } | null
   unitsNeeded: number
   notes?: string
@@ -114,7 +119,6 @@ export type FollowUpLeadRow = {
   owner?: { _id: string; name: string } | null
 }
 export type NewlyAssignedLead = { _id: string; fullName: string; phone: string; source?: string; assignedAt?: string }
-export type QuotePreview = { ok: true; proposalId: string; summary: string[]; total: number; unit: string }
 export type FollowUps = { overdue: FollowUpLeadRow[]; today: FollowUpLeadRow[]; upcoming: FollowUpLeadRow[]; days: number }
 
 export const leadApi = {
@@ -167,14 +171,6 @@ export const leadApi = {
    *  conversation and notes. Nothing is sent or saved by asking. */
   suggestMessage: (id: string) =>
     api.post<{ ok: true; message: string }>(`/leads/${id}/suggest-message`, {}, { timeout: 70000 }).then((r) => r.data.message),
-  /** Price the cheapest free unit of that size for those dates. Creates
-   *  nothing — it returns a proposal that quoteConfirm acts on. */
-  quotePreview: (id: string, body: { sizeSqf: number; startDate: string; endDate: string }) =>
-    api.post<QuotePreview>(`/leads/${id}/quote/preview`, body).then((r) => r.data),
-  /** Create the quote (holding the unit) and send the PDF to the customer. */
-  quoteConfirm: (id: string, proposalId: string) =>
-    api.post<{ ok: true; quoteNo: string; message: string; sent: boolean }>(`/leads/${id}/quote/confirm`, { proposalId }, { timeout: 60000 })
-      .then((r) => r.data),
   convertToCustomer: (id: string) =>
     api.post<{ ok: true; created: boolean; customer: { _id: string; fullName: string }; stage: 'prospect' | 'customer' }>(
       `/leads/${id}/convert`,
