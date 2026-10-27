@@ -64,7 +64,8 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoading) return
-    const inAuthGroup = segments[0] === '(tabs)'
+    // The tabs, plus the two full screens pushed over them from any tab.
+    const inAuthGroup = ['(tabs)', 'person', 'customers'].includes(segments[0] as string)
     if (!isSignedIn && inAuthGroup) {
       router.replace('/login')
     } else if (isSignedIn && !inAuthGroup) {
@@ -231,6 +232,8 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="login" />
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="person" />
+                <Stack.Screen name="customers" />
               </Stack>
             </RouteGuard>
           </AuthProvider>

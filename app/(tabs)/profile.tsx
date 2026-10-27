@@ -37,7 +37,9 @@ export default function ProfileTab() {
   // Assigning leads lives on each chat's Owner field until it has a screen
   // of its own that works.
   const rows: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap; badge?: string; onPress: () => void }[] = [
+    { key: 'customers', label: 'Find a customer', icon: 'person-outline', onPress: () => router.push('/customers') },
     { key: 'units', label: 'Unit prices & availability', icon: 'cube-outline', onPress: () => router.push('/units') },
+    { key: 'followups', label: 'Follow-ups', icon: 'time-outline', onPress: () => router.push('/followups') },
     { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
     ...(isAdmin ? [
       { key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') },

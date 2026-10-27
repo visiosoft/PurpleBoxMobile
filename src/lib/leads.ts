@@ -123,6 +123,8 @@ export const leadApi = {
   /** Own leads only, per the server's own role scoping — what the
    *  notification bell counts against. */
   followUps: () => api.get<FollowUps>('/leads/follow-ups').then((r) => r.data),
+  /** One rep's, for the admin's Team screen (the server ignores `owner` for a rep). */
+  followUpsFor: (owner: string) => api.get<FollowUps>('/leads/follow-ups', { params: { owner, days: 0 } }).then((r) => r.data),
   /** Handed to me in the last few hours and not opened yet — the dashboard's "assigned to you" alert. */
   newlyAssigned: () => api.get<NewlyAssignedLead[]>('/leads/newly-assigned').then((r) => r.data),
   /** I've looked at it: it leaves the "assigned to you" alert. */

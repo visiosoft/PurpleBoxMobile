@@ -187,6 +187,7 @@ export default function LeadDetailScreen() {
             <ActionButton icon="call-outline" label="Call" onPress={() => Linking.openURL(`tel:${lead.phone}`)} />
             {!!lead.email && <ActionButton icon="mail-outline" label="Email" onPress={() => Linking.openURL(`mailto:${lead.email}`)} />}
             <ActionButton icon="sparkles-outline" label="Score" onPress={() => setScoreOpen(true)} />
+            <ActionButton icon="albums-outline" label="History" onPress={() => router.push({ pathname: '/person', params: { leadId: lead._id, phone: lead.phoneNormalized } })} />
           </View>
 
           <Card>

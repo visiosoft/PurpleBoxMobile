@@ -475,13 +475,19 @@ export default function ChatThreadScreen() {
             >
               <Ionicons name="chevron-back" size={18} color="#fff" />
             </PressableScale>
-            <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: FONTS.display, fontSize: 15, color: '#fff' }}>{(name || phone || '?').slice(0, 1).toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: '#fff' }}>{name || phone}</Text>
-              <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.body, fontSize: 11, color: 'rgba(255,255,255,0.8)', fontVariant: ['tabular-nums'] }}>{phone}</Text>
-            </View>
+            {/* Tap the name for their profile: lead, tenancy, calls and notes alongside this chat. */}
+            <PressableScale
+              onPress={() => router.push({ pathname: '/person', params: { phone: phone || '', leadId: leadId || '' } })}
+              style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+            >
+              <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontFamily: FONTS.display, fontSize: 15, color: '#fff' }}>{(name || phone || '?').slice(0, 1).toUpperCase()}</Text>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: '#fff' }}>{name || phone}</Text>
+                <Text numberOfLines={1} style={{ marginTop: 1, fontFamily: FONTS.body, fontSize: 11, color: 'rgba(255,255,255,0.8)', fontVariant: ['tabular-nums'] }}>{phone} · Profile ›</Text>
+              </View>
+            </PressableScale>
             {/* The same assistant as every other screen, told whose chat this
                 is — so "reply to her" or "book a visit tomorrow" needs no name. */}
             <PressableScale onPress={() => setAiOpen(true)} style={{ height: 34, paddingHorizontal: 10, borderRadius: 11, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 5 }}>

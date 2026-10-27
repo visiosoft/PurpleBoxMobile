@@ -66,7 +66,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="overview"
-        options={{ href: isAdmin ? undefined : null, title: 'Overview', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
+        options={{ href: isAdmin ? undefined : null, title: 'Today', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="pulse-outline" /> }}
+      />
+      <Tabs.Screen
+        name="team"
+        options={{ href: isAdmin ? undefined : null, title: 'Team', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="people-circle-outline" /> }}
       />
       <Tabs.Screen
         name="leads"
@@ -94,9 +98,12 @@ export default function TabsLayout() {
           },
         })}
       />
+      {/* A rep's fourth tab is availability: "is there a 50 free from the
+          1st?" is asked on every call. Follow-ups live on Home's tiles and
+          the Leads tab's Follow-ups view, so they lost their own tab. */}
       <Tabs.Screen
-        name="followups"
-        options={{ title: 'Follow-ups', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="time-outline" /> }}
+        name="units"
+        options={{ href: isAdmin ? null : undefined, title: 'Units', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="cube-outline" /> }}
       />
       <Tabs.Screen
         name="profile"
@@ -107,7 +114,7 @@ export default function TabsLayout() {
           the same way Search Unit and Assistant already live there. */}
       <Tabs.Screen name="board" options={{ href: null }} />
       <Tabs.Screen name="assign" options={{ href: null }} />
-      <Tabs.Screen name="units" options={{ href: null }} />
+      <Tabs.Screen name="followups" options={{ href: null }} />
       <Tabs.Screen name="assistant" options={{ href: null }} />
     </Tabs>
   )

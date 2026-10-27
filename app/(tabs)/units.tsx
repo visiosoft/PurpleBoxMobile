@@ -70,7 +70,7 @@ export default function UnitsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <ScreenHeader title="Search Unit" />
+      <ScreenHeader title="Units" />
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, gap: 12 }}>
           <View

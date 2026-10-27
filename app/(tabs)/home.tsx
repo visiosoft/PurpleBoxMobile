@@ -161,7 +161,8 @@ export default function HomeTab() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             <ActionTile icon="key-outline" label="Book a unit" onPress={() => setBook('contract')} />
             <ActionTile icon="document-text-outline" label="New quote" onPress={() => setBook('quote')} />
-            <ActionTile icon="search-outline" label="Search units" onPress={() => router.push('/units')} />
+            <ActionTile icon="search-outline" label="Check availability" onPress={() => router.push('/units')} />
+            <ActionTile icon="person-outline" label="Find a customer" onPress={() => router.push('/customers')} />
             <ActionTile icon="list-outline" label="Plan my day" onPress={() => setAiQuestion('Plan my day: who is waiting for my reply, which follow-ups are due today, and what should I send each one?')} />
           </View>
         </View>
