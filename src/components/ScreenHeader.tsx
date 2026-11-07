@@ -4,7 +4,7 @@ import { COLORS, FONTS } from '../lib/theme'
 
 /**
  * The handoff's plain white sticky header (Leads/WhatsApp inbox screens):
- * bold Bricolage title left, optional right-side slot, hairline bottom
+ * bold heading-font title left, optional right-side slot, hairline bottom
  * border. Used as-is for screens the 18-screen spec doesn't cover
  * (Search Unit, Assistant) and as the base for spec screens until their
  * full redesign lands.

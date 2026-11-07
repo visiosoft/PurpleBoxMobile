@@ -32,7 +32,7 @@ export default function Attachment({ messageId, media }: { messageId: string; me
 
   if (!uri) {
     return (
-      <View style={{ width: 200, height: 130, borderRadius: 12, backgroundColor: 'rgba(20,8,31,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 200, height: 130, borderRadius: 12, backgroundColor: 'rgba(31,31,31,0.06)', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={COLORS.brand} />
       </View>
     )
@@ -50,7 +50,7 @@ export default function Attachment({ messageId, media }: { messageId: string; me
   return (
     <Pressable
       onPress={() => Linking.openURL(uri)}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(20,8,31,0.05)', borderRadius: 10, padding: 10, minWidth: 180 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(31,31,31,0.05)', borderRadius: 10, padding: 10, minWidth: 180 }}
     >
       <Ionicons name="document-text-outline" size={22} color={COLORS.brandDark} />
       <Text style={{ fontFamily: FONTS.bodyMedium, fontSize: 13, color: COLORS.ink, flexShrink: 1 }} numberOfLines={1}>

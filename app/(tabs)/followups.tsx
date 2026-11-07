@@ -173,7 +173,7 @@ export default function FollowUpsTab() {
                   }}
                 >
                   <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: active ? COLORS.ink : COLORS.ink3 }}>{t.label}</Text>
-                  <View style={{ backgroundColor: active ? pillColors.bg : 'rgba(20,8,31,0.07)', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1 }}>
+                  <View style={{ backgroundColor: active ? pillColors.bg : 'rgba(31,31,31,0.07)', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1 }}>
                     <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 10.5, color: active ? pillColors.fg : COLORS.ink3 }}>{counts[t.key]}</Text>
                   </View>
                 </PressableScale>

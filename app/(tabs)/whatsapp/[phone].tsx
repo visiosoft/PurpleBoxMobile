@@ -551,7 +551,7 @@ export default function ChatThreadScreen() {
             </PressableScale>
             <PressableScale
               onPress={() => setFollowUpOpen(true)}
-              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(91,43,201,0.2)', backgroundColor: COLORS.purple50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
+              style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(31,31,31,0.2)', backgroundColor: COLORS.purple50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11 }}
             >
               <Ionicons name="calendar-outline" size={15} color={COLORS.purple600} />
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -684,7 +684,7 @@ export default function ChatThreadScreen() {
             {pendingMedia.kind === 'image' ? (
               <Image source={{ uri: pendingMedia.uri }} style={{ width: 48, height: 48, borderRadius: 8 }} />
             ) : (
-              <View style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: 'rgba(20,8,31,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: 'rgba(31,31,31,0.08)', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name={pendingMedia.kind === 'audio' ? 'mic' : 'videocam'} size={20} color={COLORS.brandDark} />
               </View>
             )}

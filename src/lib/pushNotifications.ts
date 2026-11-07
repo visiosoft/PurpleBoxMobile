@@ -144,7 +144,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         name: 'Lead assignments',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 200, 200, 200],
-        lightColor: '#5B2BC9',
+        lightColor: '#34A853',
       })
     }
 
@@ -255,7 +255,7 @@ export async function sendLocalTestNotification(): Promise<void> {
         name: 'Lead assignments',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 200, 200, 200],
-        lightColor: '#5B2BC9',
+        lightColor: '#34A853',
       })
     }
 

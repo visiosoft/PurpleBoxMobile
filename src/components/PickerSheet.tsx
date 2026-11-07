@@ -18,7 +18,7 @@ export default function PickerSheet<T extends string>({
 }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,8,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(31,31,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
         <Pressable
           style={{ backgroundColor: COLORS.paper, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 24, maxHeight: '70%' }}
           onPress={(e) => e.stopPropagation()}

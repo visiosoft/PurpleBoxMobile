@@ -20,7 +20,7 @@ export function Sheet({ visible, title, subtitle, onClose, children, footer }: {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,8,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(31,31,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
           <Pressable
             style={{ backgroundColor: COLORS.paper, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '86%', paddingBottom: insets.bottom + 10 }}
             onPress={(e) => e.stopPropagation()}

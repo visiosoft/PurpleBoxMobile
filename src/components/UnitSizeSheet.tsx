@@ -35,7 +35,7 @@ export default function UnitSizeSheet({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,8,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(31,31,31,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
           <Pressable
             style={{ backgroundColor: COLORS.paper, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 28 }}
             onPress={(e) => e.stopPropagation()}

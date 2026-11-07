@@ -1,5 +1,9 @@
 /**
- * Design tokens from the "PurpleBox CRM" mobile design handoff
+ * Design tokens. Layout, radii and spacing from the "PurpleBox CRM" mobile
+ * design handoff; colours and fonts are the 2Capacity look (2capacity.com,
+ * the web app's theme-2capacity.css) since the app took on that brand.
+ *
+ * From the original handoff notes —
  * (design_handoff_purplebox_crm — PurpleBox CRM.dc.html + README.md).
  * High-fidelity spec: every hex, radius and duration here is the intended
  * production value, not a placeholder. Kept as plain values (not Tailwind
@@ -7,28 +11,34 @@
  * reach for a className string style={{...}} value now reaches for these.
  */
 export const COLORS = {
-  // Brand
-  purple900: '#1A0B33',
-  purple800: '#2D1259',
-  purple700: '#4A1FA0',
-  purple600: '#5B2BC9',
-  purple500: '#7C4DFF',
-  purple400: '#A78BFA',
-  purple200: '#DDD0FF',
-  purple100: '#EDE5FF',
-  purple50: '#F7F3FF',
+  // Brand — the 2Capacity look (2capacity.com, the web app's theme-2capacity.css):
+  // ink-black actions on white and stone, with the green-to-blue gradient.
+  // The purple* names are kept so every screen follows; their values are the
+  // 2Capacity ink and stone scale.
+  green: '#34A853',
+  greenTint: '#E6F4EA',
+  blue: '#4285F4',
+  purple900: '#1F1F1F',
+  purple800: '#1F1F1F',
+  purple700: '#1F1F1F',
+  purple600: '#1F1F1F',
+  purple500: '#3C4043',
+  purple400: '#80868B',
+  purple200: '#DADCE0',
+  purple100: '#E8EAED',
+  purple50: '#F1F3F4',
 
-  ink: '#14081F',
-  ink2: '#4A4357',
-  ink3: '#756E80',
-  ink4: '#9A93A5',
-  chevron: '#C4BED0',
+  ink: '#1F1F1F',
+  ink2: '#4A4D51',
+  ink3: '#5F6368',
+  ink4: '#80868B',
+  chevron: '#BDC1C6',
   white: '#FFFFFF',
-  paper: '#FBFAFE',
-  surfaceAlt: '#F7F5FB',
-  control: '#F3F1F7',
-  line: 'rgba(20,8,31,0.10)',
-  lineSoft: 'rgba(20,8,31,0.06)',
+  paper: '#FFFFFF',
+  surfaceAlt: '#F8F9FA',
+  control: '#F1F3F4',
+  line: '#E3E3E3',
+  lineSoft: '#EEEEEE',
 
   // WhatsApp / semantic
   whatsapp: '#25D366',
@@ -50,14 +60,14 @@ export const COLORS = {
   warnInk: '#B45309',
   warnTint: '#FFEEDD',
   warnTintSoft: '#FFF3E8',
-  cyan: '#22D3EE',
+  cyan: '#4FC3F7',
 
   // Back-compat aliases used by screens not yet migrated to the handoff palette
-  brand: '#5B2BC9',
-  brandDark: '#4A1FA0',
-  brandTint: '#EDE5FF',
-  muted: '#756E80',
-  faint: '#A09AAA',
+  brand: '#1F1F1F',
+  brandDark: '#1F1F1F',
+  brandTint: '#E8EAED',
+  muted: '#5F6368',
+  faint: '#9AA0A6',
   good: '#0F7A4A',
   goodBg: '#DEF7E6',
   warn: '#B45309',
@@ -66,26 +76,26 @@ export const COLORS = {
   badBg: '#FEE4E2',
 } as const
 
-/** `linear-gradient(135deg,#3B5BFF,#5B2BC9 55%,#7C4DFF)` — headers, primary
+/** 2Capacity's `linear-gradient(90deg, #34A853, #4FC3F7 55%, #4285F4)` — headers, primary
  *  buttons, the active nav pill, progress bars, the chat FAB. RN's
  *  LinearGradient wants stop offsets, not CSS's `at 55%` syntax. */
-export const GRADIENT_PRIMARY = ['#3B5BFF', '#5B2BC9', '#7C4DFF'] as const
+export const GRADIENT_PRIMARY = ['#34A853', '#4FC3F7', '#4285F4'] as const
 export const GRADIENT_PRIMARY_LOCATIONS = [0, 0.55, 1] as const
 
 /** Admin-only — distinguishes the admin workspace from the rep one. */
-export const GRADIENT_ADMIN = ['#22D3EE', '#3B5BFF', '#5B2BC9'] as const
-export const GRADIENT_ADMIN_LOCATIONS = [0, 0.45, 1] as const
+export const GRADIENT_ADMIN = ['#34A853', '#4FC3F7', '#4285F4'] as const
+export const GRADIENT_ADMIN_LOCATIONS = [0, 0.55, 1] as const
 
 export const FONTS = {
-  display: 'BricolageGrotesque_700Bold',
-  body: 'PlusJakartaSans_400Regular',
-  bodyMedium: 'PlusJakartaSans_500Medium',
-  bodyBold: 'PlusJakartaSans_700Bold',
+  display: 'Outfit_600SemiBold',
+  body: 'Manrope_400Regular',
+  bodyMedium: 'Manrope_500Medium',
+  bodyBold: 'Manrope_700Bold',
 } as const
 
 /** Cycled by list index, `[bg, text]`. */
 export const AVATAR_PALETTE: [string, string][] = [
-  ['#EDE5FF', '#5B2BC9'], ['#E8EEFF', '#2947C9'], ['#DEF7E6', '#0F7A4A'],
+  ['#E6F4EA', '#1E7E34'], ['#E8EEFF', '#2947C9'], ['#DEF7E6', '#0F7A4A'],
   ['#FFEEDD', '#B45309'], ['#E0F7FA', '#0E7490'], ['#FFE4EF', '#B01B5C'],
 ]
 export function avatarStyle(index: number) {
@@ -101,10 +111,10 @@ export const RADII = {
  *  Android: elevation) — the handoff's CSS box-shadow values translated
  *  to the two props RN actually reads. */
 export const SHADOWS = {
-  card: { shadowColor: '#14081F', shadowOpacity: 0.045, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  raised: { shadowColor: '#14081F', shadowOpacity: 0.09, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
-  floating: { shadowColor: '#14081F', shadowOpacity: 0.13, shadowRadius: 40, shadowOffset: { width: 0, height: 14 }, elevation: 10 },
-  sheet: { shadowColor: '#14081F', shadowOpacity: 0.22, shadowRadius: 40, shadowOffset: { width: 0, height: -14 }, elevation: 16 },
+  card: { shadowColor: '#1F1F1F', shadowOpacity: 0.045, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  raised: { shadowColor: '#1F1F1F', shadowOpacity: 0.09, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  floating: { shadowColor: '#1F1F1F', shadowOpacity: 0.13, shadowRadius: 40, shadowOffset: { width: 0, height: 14 }, elevation: 10 },
+  sheet: { shadowColor: '#1F1F1F', shadowOpacity: 0.22, shadowRadius: 40, shadowOffset: { width: 0, height: -14 }, elevation: 16 },
   whatsappGlow: { shadowColor: '#25D366', shadowOpacity: 0.32, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
-  purpleGlow: { shadowColor: '#5B2BC9', shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
+  purpleGlow: { shadowColor: '#1F1F1F', shadowOpacity: 0.35, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
 } as const

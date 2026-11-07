@@ -14,7 +14,8 @@ import { notify } from '../../lib/alert'
  * app's colours, drawn with react-native-svg, and saved as a PNG to share.
  */
 
-const PALETTE = ['#5B2BC9', '#F5B83D', '#10B981', '#E8618C', '#3B82F6', '#8B5CF6', '#F97316', '#14B8A6']
+// 2Capacity's green and blue first, then the rest.
+const PALETTE = ['#34A853', '#4285F4', '#4FC3F7', '#F5B83D', '#1F1F1F', '#E8618C', '#F97316', '#14B8A6']
 const H = 200
 const LEFT = 40
 const BOTTOM = 28

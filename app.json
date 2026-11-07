@@ -69,7 +69,7 @@
       [
         "expo-notifications",
         {
-          "color": "#5B2BC9"
+          "color": "#34A853"
         }
       ],
       "expo-background-task",
