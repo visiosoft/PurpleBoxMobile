@@ -48,7 +48,7 @@ const composeCount = (c: Compose) => (c.kind === 'email_customers' ? c.customerI
  * form, answer buttons and "Prepare it again" can be used; earlier ones read
  * as what was said. Cards stay usable wherever they are until decided.
  */
-export default function AnswerView({ answer, live, busy, acting, onAsk, onDecide, onNavigate }: {
+export default function AnswerView({ answer, live, busy, acting, onAsk, onDecide, onNavigate, superseded }: {
   answer: Answer
   live: boolean
   busy: boolean
@@ -57,11 +57,13 @@ export default function AnswerView({ answer, live, busy, acting, onAsk, onDecide
   onDecide: Decide
   /** Called before a link opens a screen — the Ask sheet closes itself. */
   onNavigate?: () => void
+  /** Cards a later card in the chat redid (same kind, same person): not confirmable. */
+  superseded?: Set<string>
 }) {
   const router = useRouter()
   // When this answer was drawn — a card past its time shows as expired.
   const [now] = useState(() => Date.now())
-  const open = answer.pendings.filter((c) => !expired(c, now))
+  const open = answer.pendings.filter((c) => !expired(c, now) && !superseded?.has(c.id))
 
   function openLink(l: AssistantLink) {
     const route = assistantLinkRoute(l)
@@ -133,7 +135,12 @@ export default function AnswerView({ answer, live, busy, acting, onAsk, onDecide
           <Text style={{ flex: 1, fontFamily: FONTS.body, fontSize: 12.5, color: COLORS.ink3 }}>or go one by one below.</Text>
         </View>
       )}
-      {answer.pendings.map((card, k, all) => (expired(card, now) ? (
+      {answer.pendings.map((card, k, all) => (superseded?.has(card.id) ? (
+        <View key={card.id} style={{ marginTop: 12, backgroundColor: '#FAFAFA', borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.line, borderRadius: 14, padding: 14 }}>
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14, color: COLORS.ink3, marginBottom: 6 }}>Replaced by the newer card below — nothing was done</Text>
+          {card.summary.slice(0, 3).map((line, n) => <Text key={n} style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.ink4, lineHeight: 19 }}>• {line}</Text>)}
+        </View>
+      ) : expired(card, now) ? (
         <View key={card.id} style={{ marginTop: 12, backgroundColor: '#FAFAFA', borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.line, borderRadius: 14, padding: 14 }}>
           <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 14.5, color: COLORS.ink3, marginBottom: 6 }}>This card has expired — nothing was done</Text>
           {card.summary.slice(0, 3).map((line, n) => <Text key={n} style={{ fontFamily: FONTS.body, fontSize: 13.5, color: COLORS.ink3, lineHeight: 20 }}>• {line}</Text>)}

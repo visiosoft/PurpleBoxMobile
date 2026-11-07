@@ -275,6 +275,17 @@ export default function AskChat({
   }
 
   const lastAssistant = msgs.map((m) => m.role).lastIndexOf('assistant')
+  /* A card the AI redid ("you made it wrong, from 1 December"): the older one
+     for the same kind and person no longer offers Confirm, so the wrong
+     quotation cannot be made by tapping the card above the right one. */
+  const superseded = new Set<string>()
+  const seen = new Set<string>()
+  for (let i = msgs.length - 1; i >= 0; i -= 1) {
+    // Only a card in a later message replaces one; two in the same answer are both meant.
+    const keys = (msgs[i].answer?.pendings || []).map((c) => ({ id: c.id, key: `${c.kind}|${c.summary[0] || ""}` }))
+    for (const k of keys) if (seen.has(k.key)) superseded.add(k.id)
+    for (const k of keys) seen.add(k.key)
+  }
   const empty = !msgs.length && !busy && !loadingChat
 
   return (
@@ -331,6 +342,7 @@ export default function AskChat({
                 onAsk={(t, extra) => { void ask(t, false, extra) }}
                 onDecide={decide}
                 onNavigate={onNavigate}
+                superseded={superseded}
               />
               <AnswerActions
                 text={(m.answer || toAnswer({ content: m.content })).content}
