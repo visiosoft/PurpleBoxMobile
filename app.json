@@ -11,7 +11,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "ae.purplebox.mobile",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -50,9 +52,11 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "PurpleBox needs your microphone to hear a spoken BayOps command.",
-          "speechRecognitionPermission": "PurpleBox needs speech recognition to turn a spoken BayOps command into text.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+          "microphonePermission": "PurpleBox uses your microphone so you can talk to the AI assistant — speak a question, or use hands-free Talk mode.",
+          "speechRecognitionPermission": "PurpleBox turns what you say to the AI assistant into text, so you can ask and answer it by voice.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
       ],
       [
@@ -68,7 +72,8 @@
           "color": "#5B2BC9"
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      "expo-sharing"
     ],
     "extra": {
       "router": {},
