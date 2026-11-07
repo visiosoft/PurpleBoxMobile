@@ -4,7 +4,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import { useAudioRecorder, RecordingPresets } from 'expo-audio'
 import { speakText, stopSpeaking, warmVoice } from './speech'
 import {
-  askListenPermission, canInterrupt, canRecognize, cancelListening, chime, isEcho, isNo, isStop, isYes, lastConfidence,
+  askListenPermission, canInterrupt, canRecognize, cancelListening, chime, isEcho, isNo, isStop, isYes, lastConfidence, theirWords, withoutEcho,
   listenOnce, ListenError, prepareTalkAudio,
 } from './talk'
 
@@ -68,44 +68,61 @@ export function useTalk({ ask, decide, serverVoice }: {
   const say = (text: string, id: number, opts: { listen?: boolean } = {}) => new Promise<{ heard: string; listened: boolean }>((resolve) => {
     if (id !== run.current || !text.trim()) { resolve({ heard: '', listened: false }); return }
     setState('speaking')
+    const startedAt = Date.now()
     let done = false
     let cut = false
     let speaking = true
-    let guarding = false
+    let latest = ''
+    let pendingCut: ReturnType<typeof setTimeout> | null = null
     const finish = (heard: string, listened: boolean) => { if (!done) { done = true; resolve({ heard, listened }) } }
     const cutIn = (heard: string) => {
       if (cut) return
       cut = true
       speaking = false
+      if (pendingCut) clearTimeout(pendingCut)
       stopSpeaking()
       chime()
       setState('listening')
-      setWords(heard)
+      setWords(withoutEcho(heard, text))
+    }
+    /* What it takes to cut it off, so a noise, a cough, a radio or the car
+       does not: "stop" at once; otherwise three or more words of theirs (not
+       its own voice coming back, not "uh"), after its first second, still
+       there a moment later. Then the same listening carries on as their turn,
+       waiting for them to finish however they pause. */
+    const onWords = (t: string) => {
+      if (id !== run.current) return
+      latest = t
+      if (cut) { setWords(withoutEcho(t, text)); return }
+      if (!speaking) return
+      if (isStop(t) && !isEcho(t, text, 1)) { cutIn(t); return }
+      if (Date.now() - startedAt >= 1000 && theirWords(t, text) >= 3 && !pendingCut) {
+        pendingCut = setTimeout(() => {
+          pendingCut = null
+          if (!cut && speaking && theirWords(latest, text) >= 3) cutIn(latest)
+        }, 450)
+      }
     }
     const guard = async () => {
-      guarding = true
-      while (!done && id === run.current) {
+      while (!done && id === run.current && (speaking || cut)) {
         let heard: string
         try {
-          heard = await listenOnce((t) => {
-            if (id !== run.current) return
-            if (cut || !speaking) setWords(t)
-            else if (!isEcho(t, text)) cutIn(t)
-          })
-        } catch { finish('', false); return }
-        if (cut) { finish(heard, true); return }
-        const theirs = heard && !isEcho(heard, text) ? heard : ''
-        if (theirs) { if (speaking) cutIn(theirs); finish(theirs, true); return }
-        // Finished talking and nothing (of theirs) was said: their turn was silent.
-        if (!speaking) { finish('', true); return }
+          heard = await listenOnce(onWords, { firstWordMs: 120_000 })
+        } catch { return } // no ears while it speaks: it just cannot be cut off this time
+        if (cut) { finish(withoutEcho(heard, text), true); return }
+        // Only noise or its own voice while it was speaking: listen on.
       }
     }
     speakText(text, () => {
       if (cut) return
       speaking = false
-      if (guarding) { setState('listening'); setWords(''); chime() } else finish('', false)
+      if (pendingCut) clearTimeout(pendingCut)
+      // It finished on its own: their turn starts fresh (with the chime), not
+      // mixed with its own voice from the speaker.
+      cancelListening()
+      finish('', false)
     })
-    if (opts.listen !== false && canInterrupt()) setTimeout(() => { if (!done && id === run.current) void guard() }, 350)
+    if (opts.listen !== false && canInterrupt()) setTimeout(() => { if (!done && speaking && id === run.current) void guard() }, 350)
   })
 
   /** What it says back for an answer, and the card waiting for a confirm, if any. */

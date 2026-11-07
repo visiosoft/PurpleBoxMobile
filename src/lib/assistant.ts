@@ -240,11 +240,11 @@ export const assistantApi = {
   adminInsight: () => api.get<AdminInsight>(`${A}/admin-insight`).then((r) => r.data),
   /** `uri` is a local recording (expo-audio). Comes back as plain text; the
    *  caller puts it in the box or asks it, exactly as if it had been typed. */
-  transcribe: (uri: string) => {
+  transcribe: (uri: string, mode?: 'talk') => {
     const form = new FormData()
     form.append('audio', { uri, name: 'voice.m4a', type: 'audio/m4a' } as unknown as Blob)
     return api
-      .post<{ text: string }>(`${A}/transcribe`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
+      .post<{ text: string }>(`${A}/transcribe${mode ? `?mode=${mode}` : ''}`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
       .then((r) => String(r.data.text || '').trim())
   },
 }
