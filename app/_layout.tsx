@@ -8,13 +8,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
 import * as SplashScreen from 'expo-splash-screen'
-import { useFonts as useBricolage, BricolageGrotesque_700Bold } from '@expo-google-fonts/bricolage-grotesque'
-import {
-  useFonts as useJakarta,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_700Bold,
-} from '@expo-google-fonts/plus-jakarta-sans'
+// The 2Capacity look: Outfit for headings, Manrope for text.
+import { useFonts as useOutfit, Outfit_500Medium, Outfit_600SemiBold } from '@expo-google-fonts/outfit'
+import { useFonts as useManrope, Manrope_400Regular, Manrope_500Medium, Manrope_700Bold } from '@expo-google-fonts/manrope'
 import { useFonts as useIconFont } from 'expo-font'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { AuthProvider, useAuth } from '../src/lib/auth'
@@ -72,7 +68,7 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
       // Same landing tab as (tabs)/_layout.tsx's own initialRouteName —
       // this was still sending everyone to /whatsapp, a leftover from
       // before the Home/Overview dashboard existed.
-      router.replace(user?.role === 'admin' ? '/overview' : '/home')
+      router.replace('/ai')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, isLoading, segments.join('/')])
@@ -199,8 +195,8 @@ function CallSyncIntegration() {
 }
 
 export default function RootLayout() {
-  const [bricolageLoaded] = useBricolage({ BricolageGrotesque_700Bold })
-  const [jakartaLoaded] = useJakarta({ PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold })
+  const [outfitLoaded] = useOutfit({ Outfit_500Medium, Outfit_600SemiBold })
+  const [manropeLoaded] = useManrope({ Manrope_400Regular, Manrope_500Medium, Manrope_700Bold })
   /* Every <Ionicons> instance tracks its own Font.isLoaded('ionicons') state
      and renders a blank <Text/> until it resolves (@expo/vector-icons'
      createIconSet) — on native this resolves fast enough nobody notices, but
@@ -208,7 +204,7 @@ export default function RootLayout() {
      tab bar icons (WhatsApp's especially, since its badge count re-renders
      it on every poll) could paint blank on first load. */
   const [iconsLoaded] = useIconFont(Ionicons.font)
-  const fontsLoaded = bricolageLoaded && jakartaLoaded && iconsLoaded
+  const fontsLoaded = outfitLoaded && manropeLoaded && iconsLoaded
   const [appReady, setAppReady] = useState(false)
 
   useEffect(() => {

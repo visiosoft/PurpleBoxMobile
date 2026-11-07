@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/talk_widget_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/talk_widget_bg"
+  android:gravity="center_vertical"
+  android:orientation="horizontal"
+  android:padding="6dp">
+
+  <LinearLayout
+    android:id="@+id/talk_widget_talk"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:background="@drawable/talk_widget_talk_bg"
+    android:contentDescription="@string/talk_widget_talk"
+    android:gravity="center"
+    android:minHeight="44dp"
+    android:orientation="horizontal">
+
+    <ImageView
+      android:layout_width="22dp"
+      android:layout_height="22dp"
+      android:contentDescription="@null"
+      android:src="@drawable/talk_widget_mic" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="8dp"
+      android:text="@string/talk_widget_talk"
+      android:textColor="#FFFFFF"
+      android:textSize="16sp"
+      android:textStyle="bold" />
+  </LinearLayout>
+
+  <FrameLayout
+    android:id="@+id/talk_widget_type"
+    android:layout_width="52dp"
+    android:layout_height="match_parent"
+    android:layout_marginStart="6dp"
+    android:background="@drawable/talk_widget_type_bg"
+    android:contentDescription="@string/talk_widget_type">
+
+    <ImageView
+      android:layout_width="22dp"
+      android:layout_height="22dp"
+      android:layout_gravity="center"
+      android:contentDescription="@null"
+      android:src="@drawable/talk_widget_keyboard" />
+  </FrameLayout>
+</LinearLayout>

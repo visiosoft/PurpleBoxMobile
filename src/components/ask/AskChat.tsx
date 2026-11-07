@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
 import { useAudioRecorder, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio'
-import { COLORS, FONTS, SHADOWS } from '../../lib/theme'
+import { COLORS, FONTS, SHADOWS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../lib/theme'
+import { LinearGradient } from 'expo-linear-gradient'
 import { assistantApi, toAnswer, type Answer, type AssistantContext } from '../../lib/assistant'
 import { apiError } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
@@ -48,7 +49,17 @@ export const STARTERS = [
  * chat: it asks for what it needs in boxes, prepares a card, and nothing is
  * created or sent until Confirm — or a spoken "yes" in Talk mode.
  */
-export default function AskChat({ context, initialQuestion, startFresh, onClose, onNavigate, starters, title = 'Ask AI' }: {
+export default function AskChat({
+  context, initialQuestion, startFresh, onClose, onNavigate, starters, title = 'Ask AI', variant = 'chat', talkNonce = '', typeNonce = '', onDashboard,
+}: {
+  /** 'home': the app's first page — a big Talk button over the chat. */
+  variant?: 'chat' | 'home'
+  /** Changes to start Talk mode at once (the home-screen widget). */
+  talkNonce?: string | number
+  /** Changes to put the cursor in the box (the widget's Type button). */
+  typeNonce?: string | number
+  /** Shown as a Dashboard button (the home page). */
+  onDashboard?: () => void
   /** The screen (and lead) it was opened from — sent with every question. */
   context?: AssistantContext
   /** Asked at once, in a new chat. */
@@ -78,7 +89,9 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
   const [web, setWeb] = useState(false)
   const [voiceOn, setVoiceOn] = useState(false)
   const [sheet, setSheet] = useState<'' | 'chats' | 'learned' | 'skills' | 'dev' | 'scheduled'>('')
+  const [showToday, setShowToday] = useState(false)
   const scroller = useRef<ScrollView>(null)
+  const inputRef = useRef<TextInput>(null)
   const stick = useRef(true)
   const busyRef = useRef(false)
   const chatRef = useRef('')
@@ -219,6 +232,25 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
     decide,
     serverVoice: caps?.voice,
   })
+  const talkRef = useRef(talk)
+  useEffect(() => { talkRef.current = talk })
+
+  // The human voice's common phrases, fetched once it is known the box is on.
+  const ready = Boolean(caps?.enabled && caps?.allowed)
+  useEffect(() => { if (ready) talkRef.current.warm() }, [ready])
+
+  // The widget's Talk button: start talking as soon as the box is ready.
+  useEffect(() => {
+    if (!talkNonce || !ready) return
+    const t = setTimeout(() => { stopSpeaking(); void talkRef.current.start() }, 400)
+    return () => clearTimeout(t)
+  }, [talkNonce, ready])
+  // The widget's Type button: the cursor in the box.
+  useEffect(() => {
+    if (!typeNonce || !ready) return
+    const t = setTimeout(() => inputRef.current?.focus(), 400)
+    return () => clearTimeout(t)
+  }, [typeNonce, ready])
 
   if (capsLoading) {
     return (
@@ -247,7 +279,8 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.paper }}>
-      <Header title={title} insetTop={insets.top} onClose={onClose} subtitle={chatTitle || (context?.name ? `About ${context.name}` : 'New chat')} />
+      <Header title={title} insetTop={insets.top} onClose={onClose} onDashboard={onDashboard}
+        subtitle={chatTitle || (context?.name ? `About ${context.name}` : 'New chat')} />
 
       {/* The chat's own bar: start again, earlier chats, what it learned, and the switches. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
@@ -271,7 +304,17 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
           onScrollBeginDrag={() => { stick.current = false }}
         >
           {loadingChat && <ActivityIndicator color={COLORS.brand} style={{ marginTop: 24 }} />}
-          {empty && <ForYouToday starters={starters?.length ? starters : STARTERS} onDo={(t) => { void ask(t, true) }} />}
+          {empty && variant === 'home' && (
+            <HomeHero
+              name={user?.name}
+              onTalk={() => { stopSpeaking(); void talk.start() }}
+              showToday={showToday}
+              onToggleToday={() => setShowToday((v) => !v)}
+            />
+          )}
+          {empty && (variant !== 'home' || showToday) && (
+            <ForYouToday starters={starters?.length ? starters : STARTERS} onDo={(t) => { void ask(t, true) }} />
+          )}
           {msgs.map((m, i) => (m.role === 'user' ? (
             <View key={i} style={{ alignItems: 'flex-end' }}>
               <View style={{ maxWidth: '85%', backgroundColor: COLORS.purple100, borderRadius: 20, borderBottomRightRadius: 6, paddingHorizontal: 15, paddingVertical: 10 }}>
@@ -311,7 +354,7 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
 
         <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 10), borderTopWidth: 1, borderTopColor: COLORS.lineSoft, backgroundColor: COLORS.paper }}>
           {talk.active || talk.error ? (
-            <TalkBar state={talk.state} words={talk.words} error={talk.error} onStop={talk.stop} onDismiss={talk.clearError} />
+            <TalkBar state={talk.state} words={talk.words} error={talk.error} onStop={talk.stop} onInterrupt={talk.interrupt} onDismiss={talk.clearError} />
           ) : (
             <Composer
               value={q}
@@ -324,6 +367,7 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
               onToggleWeb={toggleWeb}
               serverVoice={!!caps.voice}
               onTalk={() => { stopSpeaking(); void talk.start() }}
+              inputRef={inputRef}
             />
           )}
         </View>
@@ -339,7 +383,40 @@ export default function AskChat({ context, initialQuestion, startFresh, onClose,
   )
 }
 
-function Header({ title, subtitle, insetTop, onClose }: { title: string; subtitle?: string; insetTop: number; onClose?: () => void }) {
+/** The home page's empty state: a greeting and one big button to start talking. */
+function HomeHero({ name, onTalk, showToday, onToggleToday }: {
+  name?: string; onTalk: () => void; showToday: boolean; onToggleToday: () => void
+}) {
+  const h = new Date().getHours()
+  const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+  return (
+    <View style={{ alignItems: 'center', paddingTop: 28, paddingBottom: 8, gap: 6 }}>
+      <Text style={{ fontFamily: FONTS.display, fontSize: 26, color: COLORS.ink, textAlign: 'center' }}>
+        {hello}{name ? `, ${name.split(' ')[0]}` : ''}
+      </Text>
+      <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: COLORS.ink3, textAlign: 'center' }}>What can I do for you?</Text>
+      <PressableScale onPress={onTalk} accessibilityLabel="Talk to the AI" style={{ marginTop: 26, borderRadius: 80, ...SHADOWS.raised }}>
+        <LinearGradient colors={GRADIENT_PRIMARY} locations={GRADIENT_PRIMARY_LOCATIONS} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={{ width: 160, height: 160, borderRadius: 80, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="mic" size={58} color="#fff" />
+        </LinearGradient>
+      </PressableScale>
+      <Text style={{ marginTop: 16, fontFamily: FONTS.bodyBold, fontSize: 17, color: COLORS.ink }}>Tap to talk</Text>
+      <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.ink3, textAlign: 'center', paddingHorizontal: 24 }}>
+        Ask anything, or say “quote a 25 sq ft unit”. Talk over it to interrupt; say “stop” to end. Or type below.
+      </Text>
+      <PressableScale onPress={onToggleToday}
+        style={{ marginTop: 22, flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: COLORS.control }}>
+        <Ionicons name={showToday ? 'chevron-up' : 'sunny-outline'} size={16} color={COLORS.ink2} />
+        <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 13.5, color: COLORS.ink2 }}>{showToday ? 'Hide what needs you today' : 'What needs you today'}</Text>
+      </PressableScale>
+    </View>
+  )
+}
+
+function Header({ title, subtitle, insetTop, onClose, onDashboard }: {
+  title: string; subtitle?: string; insetTop: number; onClose?: () => void; onDashboard?: () => void
+}) {
   return (
     <View style={{ paddingTop: insetTop + 8, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.purple600, alignItems: 'center', justifyContent: 'center' }}>
@@ -349,6 +426,13 @@ function Header({ title, subtitle, insetTop, onClose }: { title: string; subtitl
         <Text style={{ fontFamily: FONTS.display, fontSize: 20, color: COLORS.ink }}>{title}</Text>
         {!!subtitle && <Text numberOfLines={1} style={{ fontFamily: FONTS.bodyMedium, fontSize: 12.5, color: COLORS.ink3 }}>{subtitle}</Text>}
       </View>
+      {onDashboard && (
+        <PressableScale onPress={onDashboard} accessibilityLabel="Open the dashboard"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 5, height: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: COLORS.control }}>
+          <Ionicons name="grid-outline" size={15} color={COLORS.ink2} />
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 12.5, color: COLORS.ink2 }}>Dashboard</Text>
+        </PressableScale>
+      )}
       {onClose && (
         <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
           <Ionicons name="close" size={26} color={COLORS.ink2} />
@@ -395,9 +479,10 @@ function RoundBtn({ icon, onPress, label, tone = 'plain', disabled, size = 44, t
  * hands-free conversation, and Send. Buttons sit along the bottom, large, for
  * one hand.
  */
-function Composer({ value, onChange, onSend, busy, hasMsgs, web, showWeb, onToggleWeb, serverVoice, onTalk }: {
+function Composer({ value, onChange, onSend, busy, hasMsgs, web, showWeb, onToggleWeb, serverVoice, onTalk, inputRef }: {
   value: string; onChange: (t: string) => void; onSend: () => void; busy: boolean; hasMsgs: boolean
   web: boolean; showWeb: boolean; onToggleWeb: () => void; serverVoice: boolean; onTalk: () => void
+  inputRef: React.RefObject<TextInput | null>
 }) {
   const [mic, setMic] = useState<'idle' | 'recording' | 'working'>('idle')
   const stopRef = useRef<(() => void) | null>(null)
@@ -456,6 +541,7 @@ function Composer({ value, onChange, onSend, busy, hasMsgs, web, showWeb, onTogg
   return (
     <View style={{ backgroundColor: '#fff', borderRadius: 22, borderWidth: 1, borderColor: recording ? '#DC2626' : COLORS.line, paddingHorizontal: 8, paddingTop: 6, paddingBottom: 8, ...SHADOWS.card }}>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChange}
         placeholder={recording ? 'Listening… press stop when done' : mic === 'working' ? 'Writing it down…' : hasMsgs ? 'Reply, or ask the next thing…' : 'Ask anything, or book a unit, quote or invoice…'}
@@ -480,8 +566,8 @@ function Composer({ value, onChange, onSend, busy, hasMsgs, web, showWeb, onTogg
 }
 
 /** While talking: what it is doing, what it heard, and a large Stop always in reach. */
-function TalkBar({ state, words, error, onStop, onDismiss }: {
-  state: TalkState; words: string; error: string; onStop: () => void; onDismiss: () => void
+function TalkBar({ state, words, error, onStop, onInterrupt, onDismiss }: {
+  state: TalkState; words: string; error: string; onStop: () => void; onInterrupt: () => void; onDismiss: () => void
 }) {
   if (state === 'off') {
     return (
@@ -504,6 +590,13 @@ function TalkBar({ state, words, error, onStop, onDismiss }: {
       <Text numberOfLines={3} style={{ fontFamily: FONTS.body, fontSize: 17, lineHeight: 24, color: COLORS.ink, minHeight: 24 }}>
         {words || (state === 'listening' ? 'Speak now — say "stop" to finish.' : ' ')}
       </Text>
+      {state === 'speaking' && (
+        <PressableScale onPress={onInterrupt} accessibilityLabel="Interrupt it and speak"
+          style={{ height: 48, borderRadius: 24, backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <Ionicons name="hand-left-outline" size={18} color={COLORS.ink2} />
+          <Text style={{ fontFamily: FONTS.bodyBold, fontSize: 15, color: COLORS.ink2 }}>Tap to talk over it</Text>
+        </PressableScale>
+      )}
       <PressableScale onPress={onStop} accessibilityLabel="Stop talking"
         style={{ height: 60, borderRadius: 30, backgroundColor: '#DC2626', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
         <Ionicons name="stop" size={22} color="#fff" />

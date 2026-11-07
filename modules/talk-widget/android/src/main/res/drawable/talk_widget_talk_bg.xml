@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2Capacity's green to blue. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <gradient android:angle="0" android:startColor="#34A853" android:centerColor="#4FC3F7" android:endColor="#4285F4" />
+  <corners android:radius="26dp" />
+</shape>

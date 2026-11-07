@@ -38,7 +38,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      initialRouteName={isAdmin ? 'overview' : 'home'}
+      initialRouteName="ai"
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
@@ -60,13 +60,20 @@ export default function TabsLayout() {
           so their relative order to each other doesn't matter — only
           their shared position ahead of Leads/WhatsApp does, so whichever
           one a role sees always leads the bar. */}
+      {/* The first page for everyone: the AI box and a big Talk button. The
+          dashboards (Home for a rep, Today for an admin) open from its
+          Dashboard button, so they keep their screens but not a tab. */}
+      <Tabs.Screen
+        name="ai"
+        options={{ title: 'AI', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="mic-circle-outline" /> }}
+      />
       <Tabs.Screen
         name="home"
-        options={{ href: isAdmin ? null : undefined, title: 'Home', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
+        options={{ href: null, title: 'Home', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="home-outline" /> }}
       />
       <Tabs.Screen
         name="overview"
-        options={{ href: isAdmin ? undefined : null, title: 'Today', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="pulse-outline" /> }}
+        options={{ href: null, title: 'Today', tabBarIcon: ({ focused }) => <TabIcon focused={focused} name="pulse-outline" /> }}
       />
       <Tabs.Screen
         name="team"

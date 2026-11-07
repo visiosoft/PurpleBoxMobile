@@ -1,0 +1,15 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'ae.purplebox.talkwidget'
+version = '1.0.0'
+
+android {
+  namespace "ae.purplebox.talkwidget"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}

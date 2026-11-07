@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../src/lib/auth'
-import { confirmAction } from '../../src/lib/alert'
+import { confirmAction, notify } from '../../src/lib/alert'
+import { widgetSupported, canPinWidget, pinWidget } from '../../src/lib/widget'
 import { COLORS, FONTS, GRADIENT_PRIMARY, GRADIENT_PRIMARY_LOCATIONS } from '../../src/lib/theme'
 import PressableScale from '../../src/components/PressableScale'
 
@@ -29,6 +30,12 @@ export default function ProfileTab() {
   const isAdmin = user?.role === 'admin'
   const role = ROLE_META[user?.role ?? ''] ?? ROLE_META.sales_rep
 
+  // The launcher's own dialog adds it; where it cannot be asked, say how.
+  function addWidget() {
+    if (canPinWidget() && pinWidget()) return
+    notify('Add the AI widget', 'Long-press an empty spot on your home screen, tap Widgets, find PurpleBox and drag "PurpleBox AI" onto the screen.')
+  }
+
   function confirmLogout() {
     confirmAction('Sign out', 'You can sign back in any time with the same account.', 'Sign out', () => logout(), { destructive: true })
   }
@@ -41,6 +48,9 @@ export default function ProfileTab() {
     { key: 'units', label: 'Unit prices & availability', icon: 'cube-outline', onPress: () => router.push('/units') },
     { key: 'followups', label: 'Follow-ups', icon: 'time-outline', onPress: () => router.push('/followups') },
     { key: 'assistant', label: 'Assistant', icon: 'sparkles-outline', onPress: () => router.push('/assistant') },
+    ...(widgetSupported ? [
+      { key: 'widget', label: 'Add the AI widget to your home screen', icon: 'apps-outline' as const, onPress: addWidget },
+    ] : []),
     ...(isAdmin ? [
       { key: 'board', label: 'Lead board', icon: 'grid-outline' as const, onPress: () => router.push('/board') },
     ] : []),
