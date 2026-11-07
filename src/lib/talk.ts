@@ -6,7 +6,7 @@ import {
   AVAudioSessionMode,
   type ExpoSpeechRecognitionOptions,
 } from 'expo-speech-recognition'
-import { setAudioModeAsync, type AudioRecorder } from 'expo-audio'
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioRecorder } from 'expo-audio'
 import { assistantApi } from './assistant'
 import { apiError } from './api'
 import { audioSessionSetElsewhere } from './speech'
@@ -61,7 +61,14 @@ const RECOGNIZE: ExpoSpeechRecognitionOptions = {
   iosCategory: IOS_CATEGORY,
   iosTaskHint: 'unspecified',
   addsPunctuation: true,
+  // Echo cancelling on iPhone: its own voice from the speaker is not heard
+  // as theirs, so they can talk over it.
+  iosVoiceProcessingEnabled: true,
 }
+
+/** How sure the recogniser was of the last thing it heard (0–1; 0 = it did not say). */
+let confidence = 0
+export const lastConfidence = () => confidence
 
 let stopCurrent: (() => void) | null = null
 
@@ -103,9 +110,11 @@ function viaPhone(onWords?: (text: string) => void): Promise<string> {
       else resolve(said.trim())
     }
     const abort = () => { said = ''; try { M.abort() } catch { /* already ended */ } finish() }
+    confidence = 0
     subs.push(M.addListener('result', (e) => {
       const t = e.results[0]?.transcript
       if (t != null) { said = t; onWords?.(said) }
+      if (e.isFinal) confidence = Math.max(0, e.results[0]?.confidence ?? 0)
     }))
     subs.push(M.addListener('error', (e) => {
       const msg = errorText(e.error)
@@ -205,6 +214,7 @@ export function startDictation(onWords: (text: string) => void, onEnd: (error?: 
       // start/stop beep on every pause.
       continuous: true,
       iosCategory: undefined,
+      iosVoiceProcessingEnabled: false,
     })
   } catch (e) {
     finish((e as Error)?.message || 'Could not start listening.')
@@ -225,4 +235,32 @@ export function isYes(text: string) {
 /** A no to a card read out. Pure. */
 export function isNo(text: string) {
   return /^\s*(no|nope|nah|cancel|don'?t|do not|stop that|not now|leave it|skip)\b/i.test(text)
+}
+
+/** Whether listening can run while it speaks (the phone's own recognition), so talking over it stops it. */
+export const canInterrupt = () => canRecognize()
+
+const wordsOf = (t: string) => String(t || '').toLowerCase().match(/[a-z0-9']+/g) || []
+
+/**
+ * Whether what the microphone picked up is just its own voice coming back
+ * from the speaker: most of the words heard are words it is saying. Pure.
+ */
+export function isEcho(heard: string, saying: string) {
+  const h = wordsOf(heard)
+  if (!h.length) return true
+  const said = new Set(wordsOf(saying))
+  const own = h.filter((w) => said.has(w)).length
+  // Every word is its own, or one stray word among its own: the speaker, not them.
+  return h.length - own === 0 || (h.length - own === 1 && own >= 2)
+}
+
+/* A short two-note chime — "your turn" — played quietly. */
+const CHIME = require('../../assets/chime.wav')
+let chimePlayer: AudioPlayer | null = null
+export function chime() {
+  try {
+    if (!chimePlayer) { chimePlayer = createAudioPlayer(CHIME); chimePlayer.volume = 0.5 }
+    void chimePlayer.seekTo(0).then(() => chimePlayer?.play()).catch(() => {})
+  } catch { /* no audio */ }
 }
