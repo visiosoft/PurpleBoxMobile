@@ -27,7 +27,7 @@ export type AdminToday = {
   collected: { today: number; yesterday: number }
   moveIns: number
   moveOuts: number
-  occupancy: { pct: number; available: number; occupied: number; reserved: number }
+  occupancy: { pct: number; available: number; occupied: number; reserved: number; maintenance?: number; rentable?: number }
   unassigned: number
   missedFollowUps: number
   visitsToday: number

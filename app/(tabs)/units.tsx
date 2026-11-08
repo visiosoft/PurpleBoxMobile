@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
+import { useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { unitApi, type Unit, type UnitStatus } from '../../src/lib/units'
@@ -42,7 +43,11 @@ export default function UnitsScreen() {
   const { data: rawUnits = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['units', datesSet, fromDate, toDate],
     queryFn: () => (datesSet ? unitApi.availableInPeriod(fromDate!, toDate!) : unitApi.list()),
+    // Live, like the web: fresh on every visit and every minute while open.
+    staleTime: 15_000,
+    refetchInterval: 60_000,
   })
+  useFocusEffect(useCallback(() => { refetch() }, [refetch]))
 
   const onManualRefresh = async () => {
     setManualRefreshing(true)

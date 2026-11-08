@@ -95,7 +95,7 @@ export default function OverviewTab() {
             <BigTile icon="key-outline" label="Units booked" value={String(t.booked.unitsToday)} sub={versus(t.booked.today, t.booked.yesterday)} />
             <BigTile icon="person-add-outline" label="Leads captured" value={String(t.leads.today)} sub={versus(t.leads.today, t.leads.yesterday)} />
             <BigTile icon="cash-outline" label="Collected" value={AED(t.collected.today)} sub={versus(t.collected.today, t.collected.yesterday, 'AED ')} />
-            <BigTile icon="cube-outline" label="Occupancy" value={`${t.occupancy.pct}%`} sub={`${t.occupancy.available} units free`} onPress={() => router.push('/units')} />
+            <BigTile icon="cube-outline" label="Occupancy" value={`${t.occupancy.pct}%`} sub={`${t.occupancy.occupied}${t.occupancy.rentable ? ` of ${t.occupancy.rentable}` : ''} occupied · ${t.occupancy.available} free`} onPress={() => router.push('/units')} />
           </View>
 
           <View style={{ flexDirection: 'row', gap: 10 }}>
